@@ -1,0 +1,17 @@
+# compiled binary
+/status-page
+/bin/
+
+# local secrets - NEVER commit
+.env
+*.pem
+*.key
+
+# terraform (later phases)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+
+# macOS
+.DS_Store
