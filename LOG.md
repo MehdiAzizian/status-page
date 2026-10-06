@@ -92,3 +92,24 @@ SELECT * FROM components;
 - Leave psql with `\q`.
 - Data lives inside the container. Delete the container → data is gone.
   (Fix later with a volume.)
+
+### Step 5: connect Go to Postgres + real /healthz
+
+**What:** app reads config from env vars, connects to Postgres, `/healthz` pings the DB.
+**Why:** "app running" ≠ "app working". If DB is down, health check must fail.
+
+```bash
+go get github.com/jackc/pgx/v5        # add Postgres driver
+go mod tidy                           # fix go.mod/go.sum (missing go.sum entry error)
+export DATABASE_URL=postgres://postgres:secret@localhost:5432/postgres
+go run .                              # now on port 8081 (8080 used by jobmon)
+curl -i localhost:8081/healthz        # 200 = DB ok, 503 = DB down
+```
+
+- `os.Getenv` = config from environment. No passwords in code.
+- `pgxpool` = reusable DB connections.
+- `db.Ping` with 2s timeout → 503 if DB unreachable.
+- Real incident: Mac rebooted → `pg` container stayed dead (no restart policy)
+  → `/healthz` said 503. Health check did its job.
+- Right after `docker start pg` still 503: DB was booting. Few seconds later 200.
+  Starting ≠ ready.
