@@ -125,3 +125,15 @@ export DATABASE_URL=postgres://postgres:secret@localhost:5432/postgres
 go run .                               # terminal 1 = server
 curl -i localhost:8081/healthz         # terminal 2 = client → 200
 ```
+
+### Step 6a/6b: read endpoints
+
+**What:** `GET /components` (all) and `GET /components/{id}` (one), as JSON.
+**Why:** the real feature: show the status board from the DB.
+
+- `type Component struct` = one DB row as a Go box. `json:"id"` = name in JSON.
+- `db.Query` (many rows) · `db.QueryRow` (one row) · `Scan` = row → struct.
+- `{id}` in route + `r.PathValue("id")` · `strconv.Atoi` = "2" → 2.
+- `$1` placeholder = safe from SQL injection.
+- Tested: `/components/2` → 200 · `/99` → 404 · `/abc` → 400.
+- Mistake: `undefined: json` → forgot `"encoding/json"` in imports.

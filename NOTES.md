@@ -133,3 +133,8 @@ Symptom → Evidence → Hypothesis → Test → Fix → Verify
 - JSON: `[ ]` = list · `{ }` = one object. DB row → Go struct → JSON → client.
 - ⭐ **SQL injection**: never glue user input into SQL. Use placeholders (`$1`).
 - 400 = **your** request is bad (abc is not a number). 404 = thing doesn't exist.
+- ⭐ **4xx = client's fault. 5xx = server's fault** → alerts fire on 5xx, not 4xx.
+- GET = **read**. POST = **change**. `curl -X POST -d '{...}'` = send a body.
+- Encode = Go → JSON (send). Decode = JSON → Go (receive).
+- ⭐ **Validate input. Never trust the client.**
+- 204 = "done, nothing to send back".

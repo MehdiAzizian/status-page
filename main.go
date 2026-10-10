@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 	"encoding/json"
+	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -61,6 +62,24 @@ mux.HandleFunc("GET /components", func(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(list)
+})
+
+mux.HandleFunc("GET /components/{id}", func(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "id must be a number", http.StatusBadRequest)
+		return
+	}
+	var c Component
+	err = db.QueryRow(r.Context(),
+		"SELECT id, name, status FROM components WHERE id = $1", id,
+	).Scan(&c.ID, &c.Name, &c.Status)
+	if err != nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(c)
 })
 
 	log.Println("listening on :" + port)
