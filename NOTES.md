@@ -97,3 +97,39 @@ Symptom → Evidence → Hypothesis → Test → Fix → Verify
 - Starting ≠ ready. A DB needs a few seconds after `start`.
   → That's why deploys **retry** health checks, not check once.
 - Wrong folder is the #1 beginner error. `pwd` first.
+- **Why a DB?** Status page must remember "API = down". App restarts → memory
+  is wiped. DB keeps data. Almost every real app = app + DB.
+- **Why /healthz? Who uses it:**
+  deploy pipeline (bad → rollback) · Kubernetes (bad → restart / no traffic) ·
+  load balancer (bad → skip this server) · monitoring (bad → alert).
+- **App = server.** It waits on a port forever for requests.
+  `listening on :8081` = "I'm open, knock on door 8081".
+- **Log line** = time + message. First thing you read when something breaks.
+- **2 terminals** = one runs the server (busy, waiting), one is the client (curl).
+- `Ctrl+C` = stop the program running in this terminal.
+- `curl` = a browser for the terminal. Sends a request, prints the answer.
+- **Close terminal → its programs die + its `export`s are gone.**
+  `docker run -d` survives: it lives in Docker, not in the terminal.
+- `echo $VAR` = read an env var. Empty line = not set.
+- `ping` = is the **computer** alive? `curl` = is the **app** alive?
+- `$` = "value of". `echo DATABASE_URL` prints the word. `echo $DATABASE_URL` prints the value.
+- `docker run` = buy a **new** car. `docker start` = turn the key in **your** car.
+  `start` keeps your data. New `run` = empty DB.
+- **Restart policy** (`--restart unless-stopped`) = container wakes up when Docker restarts.
+- `go mod init` = birth certificate. Once per project. `go run .` = every time.
+- `DATABASE_URL` = DB address + password. No URL → app can't start.
+- **Start dependencies first.** DB → then app.
+- Config goes in the **environment**, not the code. Code only **reads** it (`os.Getenv`).
+- `export` = sticky note on the terminal. Programs started from it can read it.
+- ⭐ **Same idea everywhere, different sticky note:**
+  Mac `export` · Docker `-e` · Compose `environment:` · K8s ConfigMap/Secret · GitHub Actions Secrets.
+- Why not in code? 🔐 password would be public · 🌍 one code, different URL per place.
+- ⭐ **12-factor app** = config lives in the environment. Same code everywhere.
+- `.env` file = sticky notes saved in a file. Always in `.gitignore`.
+- ⭐ **Config vs Secret.** Port = config (ConfigMap). Password = secret (Secret).
+- `struct` = a box with labeled slots. `Component` = one row of the table, in Go.
+- `undefined: X` = you use X but forgot to `import` it.
+- Go compiles at start → code change = Ctrl+C + `go run .` again.
+- JSON: `[ ]` = list · `{ }` = one object. DB row → Go struct → JSON → client.
+- ⭐ **SQL injection**: never glue user input into SQL. Use placeholders (`$1`).
+- 400 = **your** request is bad (abc is not a number). 404 = thing doesn't exist.

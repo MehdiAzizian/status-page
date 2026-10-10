@@ -6,9 +6,16 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"encoding/json"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+type Component struct {
+	ID     int    `json:"id"`
+	Name   string `json:"name"`
+	Status string `json:"status"`
+}
 
 func main() {
 	dbURL := os.Getenv("DATABASE_URL")
@@ -37,6 +44,24 @@ func main() {
 		}
 		w.Write([]byte("ok\n"))
 	})
+
+mux.HandleFunc("GET /components", func(w http.ResponseWriter, r *http.Request) {
+	rows, err := db.Query(r.Context(), "SELECT id, name, status FROM components ORDER BY id")
+	if err != nil {
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	list := []Component{}
+	for rows.Next() {
+		var c Component
+		rows.Scan(&c.ID, &c.Name, &c.Status)
+		list = append(list, c)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(list)
+})
 
 	log.Println("listening on :" + port)
 	log.Fatal(http.ListenAndServe(":"+port, mux))

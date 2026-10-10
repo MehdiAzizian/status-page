@@ -113,3 +113,15 @@ curl -i localhost:8081/healthz        # 200 = DB ok, 503 = DB down
   → `/healthz` said 503. Health check did its job.
 - Right after `docker start pg` still 503: DB was booting. Few seconds later 200.
   Starting ≠ ready.
+
+### Drill: restore after closing terminals
+
+Closed terminals → app dead, `export` gone. Docker restarted → `pg` dead (no restart policy).
+Restored by myself, in order:
+
+```bash
+docker start pg                        # existing container (NOT docker run)
+export DATABASE_URL=postgres://postgres:secret@localhost:5432/postgres
+go run .                               # terminal 1 = server
+curl -i localhost:8081/healthz         # terminal 2 = client → 200
+```
