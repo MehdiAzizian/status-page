@@ -137,3 +137,17 @@ curl -i localhost:8081/healthz         # terminal 2 = client → 200
 - `$1` placeholder = safe from SQL injection.
 - Tested: `/components/2` → 200 · `/99` → 404 · `/abc` → 400.
 - Mistake: `undefined: json` → forgot `"encoding/json"` in imports.
+
+### Step 6c: write endpoint
+
+**What:** `POST /components/{id}/status` with body `{"status":"down"}`.
+**Why:** support staff change status. GET reads, POST changes.
+
+```bash
+curl -i -X POST localhost:8081/components/3/status -d '{"status":"down"}'   # 204
+```
+
+- `json.Decode(r.Body)` = read client JSON · validation: only operational/degraded/down → else 400.
+- `db.Exec` UPDATE · `RowsAffected()==0` → 404 · success → 204 No Content.
+- Restarted app → still "down" → **stateless app**, data lives in DB.
+- Delete `pg` container → data gone (no volume yet).

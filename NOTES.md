@@ -138,3 +138,12 @@ Symptom → Evidence → Hypothesis → Test → Fix → Verify
 - Encode = Go → JSON (send). Decode = JSON → Go (receive).
 - ⭐ **Validate input. Never trust the client.**
 - 204 = "done, nothing to send back".
+- Nobody codes by heart. Job = **read, understand, debug**. Look up syntax.
+- ⭐ **Stateless app** = app remembers nothing, DB holds all data.
+  → kill / restart / run 10 copies, no data lost. K8s depends on this.
+- ⭐ **Container** = app + everything it needs in one box. Runs the same everywhere.
+- ⭐ **Multi-stage build** = kitchen (build tools) + plate (only the app). ~900MB → ~10MB.
+- ⭐ **Layer caching**: copy `go.mod` first, code later → rebuilds are fast.
+- ⭐ **Never run as root** in a container (`USER nonroot`).
+- `distroless` = no shell, no tools. Less to hack.
+- Image = recipe/frozen box. Container = a running copy of it.

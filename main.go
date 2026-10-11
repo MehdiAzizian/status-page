@@ -82,6 +82,36 @@ mux.HandleFunc("GET /components/{id}", func(w http.ResponseWriter, r *http.Reque
 	json.NewEncoder(w).Encode(c)
 })
 
+mux.HandleFunc("POST /components/{id}/status", func(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "id must be a number", http.StatusBadRequest)
+		return
+	}
+	var body struct {
+		Status string `json:"status"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "bad json", http.StatusBadRequest)
+		return
+	}
+	if body.Status != "operational" && body.Status != "degraded" && body.Status != "down" {
+		http.Error(w, "status must be operational, degraded or down", http.StatusBadRequest)
+		return
+	}
+	tag, err := db.Exec(r.Context(),
+		"UPDATE components SET status = $1 WHERE id = $2", body.Status, id)
+	if err != nil {
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+})
+
 	log.Println("listening on :" + port)
 	log.Fatal(http.ListenAndServe(":"+port, mux))
 }
