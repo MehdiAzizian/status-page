@@ -1,171 +1,134 @@
-# Cheatsheet
+# Notes
 
-Short hints to remember. ⭐ = asked in interviews.
-
-## Big ideas
-
-- ⭐ **App reports, platform acts.** App says "I'm sick" (`/healthz` → 503).
-  Kubernetes / Docker / load balancer decides what to do.
-- ⭐ **Config in env vars, not in code.** Same code runs on laptop, Docker, AWS.
-- ⭐ **Fail fast.** Missing config → crash at start with a clear message.
-- ⭐ **Pin versions.** `postgres:16`, never `latest`. Same input → same result.
-- ⭐ **Lock files = receipts.** `go.sum`, `package-lock.json`,
-  `.terraform.lock.hcl`. Exact versions + fingerprints.
-- ⭐ **Containers are disposable.** Delete container → data gone, unless volume.
-- ⭐ **Restart policy.** Container without one stays dead after a reboot.
-
-## HTTP status codes ⭐
-
-| Code | Meaning | Remember |
-|---|---|---|
-| 200 | OK | all good |
-| 404 | Not Found | wrong path |
-| 405 | Method Not Allowed | right path, wrong GET/POST |
-| 500 | Internal Server Error | app bug |
-| 503 | Service Unavailable | app alive, dependency down |
-
-## Errors → meaning ⭐
-
-| Error | Means |
-|---|---|
-| `connection refused` | nothing is listening on that port |
-| `go.mod file not found` | wrong folder → `pwd` |
-| `not a git repository` | wrong folder → `pwd` |
-| `missing go.sum entry` | run `go mod tidy` |
-| `/healthz` 503 | check the DB: `docker ps -a` |
-
-## Git
-
-```bash
-git status                 # what changed?
-git add . && git commit -m "msg" && git push
-git log --oneline          # history
-git remote -v              # where is GitHub?
-```
-
-## Go
-
-```bash
-go run .                   # compile + run
-go mod tidy                # fix go.mod / go.sum
-```
-`main.go` = front door. `go.mod` = shopping list. `go.sum` = receipt.
-
-## Docker ⭐
-
-```bash
-docker run -d --name X -e KEY=val -p HOST:CONTAINER image:tag
-docker ps                  # running containers
-docker ps -a               # ALL containers, also stopped ones
-docker start X / docker stop X
-docker exec -it X bash     # go inside a container
-docker logs X              # what did it print?
-```
-
-## Postgres
-
-```bash
-docker exec -it pg psql -U postgres
-```
-`\q` quit · `\dt` list tables · `SELECT * FROM components;`
-URL format: `postgres://user:password@host:port/dbname`
-
-## Troubleshooting loop ⭐
-
-Symptom → Evidence → Hypothesis → Test → Fix → Verify
-
-## nano
-
-`^O` save · `^X` exit · `^W` search · `^K` cut line · `^U` paste
+The important points only. ⭐ = asked in interviews.
 
 ---
 
-# Tips (one-liners, keep growing)
+## 1. The project
 
-- Our app is **one service**. `main.go` is just where it starts.
-- `/healthz` = the app checking **itself**: "can I reach my DB?"
-- **K8s is the doctor.** It calls `/healthz` every few seconds.
-  App only reports. K8s takes action (stop traffic, restart).
-- Every language does `/healthz`. It's just a URL: 200 or 503.
-- `go.mod` = shopping list. `go.sum` = receipt.
-- `connection refused` = nobody is listening on that port.
-- 404 = wrong path. 405 = right path, wrong method.
-- Git is on your laptop. GitHub is a copy on the internet. `push` = send.
-- Commit = a photo of your code, with an ID (SHA).
-- `docker ps` = alive only. `docker ps -a` = alive + dead.
-- Mac reboot → containers without restart policy stay dead.
-- Starting ≠ ready. A DB needs a few seconds after `start`.
-  → That's why deploys **retry** health checks, not check once.
-- Wrong folder is the #1 beginner error. `pwd` first.
-- **Why a DB?** Status page must remember "API = down". App restarts → memory
-  is wiped. DB keeps data. Almost every real app = app + DB.
-- **Why /healthz? Who uses it:**
-  deploy pipeline (bad → rollback) · Kubernetes (bad → restart / no traffic) ·
-  load balancer (bad → skip this server) · monitoring (bad → alert).
-- **App = server.** It waits on a port forever for requests.
-  `listening on :8081` = "I'm open, knock on door 8081".
-- **Log line** = time + message. First thing you read when something breaks.
-- **2 terminals** = one runs the server (busy, waiting), one is the client (curl).
-- `Ctrl+C` = stop the program running in this terminal.
-- `curl` = a browser for the terminal. Sends a request, prints the answer.
-- **Close terminal → its programs die + its `export`s are gone.**
-  `docker run -d` survives: it lives in Docker, not in the terminal.
-- `echo $VAR` = read an env var. Empty line = not set.
-- `ping` = is the **computer** alive? `curl` = is the **app** alive?
-- `$` = "value of". `echo DATABASE_URL` prints the word. `echo $DATABASE_URL` prints the value.
-- `docker run` = buy a **new** car. `docker start` = turn the key in **your** car.
-  `start` keeps your data. New `run` = empty DB.
-- **Restart policy** (`--restart unless-stopped`) = container wakes up when Docker restarts.
-- `go mod init` = birth certificate. Once per project. `go run .` = every time.
-- `DATABASE_URL` = DB address + password. No URL → app can't start.
-- **Start dependencies first.** DB → then app.
-- Config goes in the **environment**, not the code. Code only **reads** it (`os.Getenv`).
-- `export` = sticky note on the terminal. Programs started from it can read it.
-- ⭐ **Same idea everywhere, different sticky note:**
-  Mac `export` · Docker `-e` · Compose `environment:` · K8s ConfigMap/Secret · GitHub Actions Secrets.
-- Why not in code? 🔐 password would be public · 🌍 one code, different URL per place.
-- ⭐ **12-factor app** = config lives in the environment. Same code everywhere.
-- `.env` file = sticky notes saved in a file. Always in `.gitignore`.
-- ⭐ **Config vs Secret.** Port = config (ConfigMap). Password = secret (Secret).
-- `struct` = a box with labeled slots. `Component` = one row of the table, in Go.
-- `undefined: X` = you use X but forgot to `import` it.
-- Go compiles at start → code change = Ctrl+C + `go run .` again.
-- JSON: `[ ]` = list · `{ }` = one object. DB row → Go struct → JSON → client.
-- ⭐ **SQL injection**: never glue user input into SQL. Use placeholders (`$1`).
-- 400 = **your** request is bad (abc is not a number). 404 = thing doesn't exist.
-- ⭐ **4xx = client's fault. 5xx = server's fault** → alerts fire on 5xx, not 4xx.
-- GET = **read**. POST = **change**. `curl -X POST -d '{...}'` = send a body.
-- Encode = Go → JSON (send). Decode = JSON → Go (receive).
-- ⭐ **Validate input. Never trust the client.**
-- 204 = "done, nothing to send back".
-- Nobody codes by heart. Job = **read, understand, debug**. Look up syntax.
-- ⭐ **Stateless app** = app remembers nothing, DB holds all data.
-  → kill / restart / run 10 copies, no data lost. K8s depends on this.
-- ⭐ **Container** = app + everything it needs (libs, OS files), isolated from the host. Runs the same everywhere.
-- ⭐ **Multi-stage build** = kitchen (build tools) + plate (only the app). ~900MB → ~10MB.
-- ⭐ **Layer caching**: copy `go.mod` first, code later → rebuilds are fast.
-- ⭐ **Never run as root** in a container (`USER nonroot`).
-- `distroless` = no shell, no tools. Less to hack.
-- **Image** = read-only template (built from Dockerfile). **Container** = a running instance of an image.
-- ⭐ **Every container = its own little computer. `localhost` = "me".**
-  Inside a container, `localhost` is the container, NOT your Mac.
-- `host.docker.internal` = "my Mac", seen from inside Docker (Mac/Windows only).
-- `docker run --rm` = delete container when it stops (good for tests).
-- ⭐ "Works on my laptop, fails in container" → usually `localhost`. A container can't
-  reach other containers via `localhost`. Give the right address.
-- DB is there to **remember**. Because DB remembers, the app can be **stateless**. (not the other way)
-- 💉 SQL injection: `/1; DROP TABLE x` glued into SQL = table deleted. `$1` = input is data, never a command.
-- ⭐ **Docker Compose** = one YAML file describes all containers (+ network, volumes). One command: `docker compose up -d --build`.
-- ⭐ Compose creates a **network**; each **service name is a DNS name** on it. App reaches DB at `db:5432`.
-- ⭐ **Volume**: a container's own files are deleted with the container. A **named volume** is Docker-managed
-  storage that outlives containers. `pgdata:/var/lib/postgresql/data` = Postgres writes its data into the volume.
-  Recreate container → same volume → data still there. `docker compose down -v` deletes volumes.
-- ⭐ **Named volume** (`pgdata:`, Docker manages it) vs **bind mount** (`./db/init.sql:...`, a file from your Mac).
-- `depends_on: service_healthy` = start app only when DB is **ready**.
-- Official postgres image: on first start with an **empty** data dir, it runs every `.sql` in
-  `/docker-entrypoint-initdb.d/`. Data already exists → skipped (protects your data).
-- ⭐ **Compose does NOT reuse old containers.** It creates its own (`status-page-db-1`) from the image.
-  Image = template with no data → new container starts empty.
-- `init.sql` = the SQL I typed by hand in Step 4, saved in a file, run automatically.
-- **Mount** = attach storage to a folder path inside the container (like plugging a USB drive).
-- Volume test: `compose down` → data kept · `compose down -v` → volume deleted → empty DB → init.sql runs again.
+- Small Go app (status page) + PostgreSQL database.
+- The app is only practice. The real skills: Docker, Linux, CI/CD, AWS, Terraform, Ansible, K8s.
+- Path: laptop → Docker → AWS → automatic deploy → break it → recover → Kubernetes.
+
+## 2. Names
+
+| Name | What it is |
+|---|---|
+| database | the idea: software that stores data |
+| PostgreSQL (Postgres) | one database product. `16` = its version |
+| `postgres:16` | image of Postgres v16 |
+| `status-page-app` | image of our Go app (built from the Dockerfile) |
+| `pg` | old container from Step 4. Not used anymore |
+| `db` | DB container in Compose. Used now |
+| `db:5432` | address: container `db`, port 5432 (Postgres default port) |
+| `pgdata` | volume where Postgres saves its files |
+
+## 3. App
+
+- `main.go` = where the app starts. `go.mod` = list of libraries. `go.sum` = exact versions + fingerprints.
+- The app is a **server**: it waits on a port (8081) for requests.
+- `/healthz` = the app checks itself: "can I reach my DB?" → 200 or 503.
+- ⭐ Who uses `/healthz`: deploy pipeline (fail → rollback), Kubernetes (fail → restart),
+  load balancer (fail → skip server), monitoring (fail → alert).
+- ⭐ **The app reports, the platform acts.**
+- ⭐ **Stateless app**: the app keeps no data. The DB keeps it.
+  → you can restart or copy the app freely. Kubernetes depends on this.
+
+## 4. HTTP
+
+| Code | Meaning |
+|---|---|
+| 200 | OK |
+| 204 | done, no content to return |
+| 400 | bad request (e.g. `abc` is not a number) |
+| 404 | not found |
+| 405 | right path, wrong method |
+| 500 | app error |
+| 503 | app alive, dependency (DB) down |
+
+- ⭐ **4xx = client's fault. 5xx = server's fault.** Alerts fire on 5xx.
+- GET = read. POST = change.
+- ⭐ **SQL injection**: never put user input directly in SQL. Use placeholders (`$1`).
+- ⭐ Always validate input.
+
+## 5. Config
+
+- ⭐ Config goes in **environment variables**, not in code (**12-factor app**).
+  Reasons: password stays out of GitHub · same code works on laptop and AWS.
+- `export X=...` sets it in the current terminal only. Close terminal → gone.
+- Same idea everywhere: `export` · Docker `-e` · Compose `environment:` · K8s ConfigMap/Secret · GitHub Secrets.
+- ⭐ **Config vs secret**: port = config, password = secret. Store them separately.
+- `.env` file = env vars saved in a file → always in `.gitignore`.
+
+## 6. Docker
+
+- ⭐ **Image** = template (program installed, no data). **Container** = a running copy of an image.
+- **Dockerfile** = the instructions to build an image.
+- ⭐ **Multi-stage build**: stage 1 builds the app with Go tools, stage 2 keeps only the binary. 900 MB → 27 MB.
+- ⭐ **Layer caching**: copy `go.mod` before the code → rebuilds are fast.
+- ⭐ Never run as root (`USER nonroot`).
+- ⭐ Each container has its own network. `localhost` inside a container = that container, not your Mac.
+- `docker run` = create a NEW container. `docker start` = start an EXISTING one (keeps its data).
+- **Restart policy** (`restart: unless-stopped`) = container comes back after a Docker/Mac restart.
+
+## 7. Docker Compose
+
+- ⭐ One file (`compose.yaml`) describes all containers, networks, volumes. One command starts all.
+- Compose creates its **own** containers from images. It does not reuse old ones.
+- Compose network: each **service name is a DNS name** → app reaches DB at `db:5432`.
+- `depends_on: service_healthy` → app starts only after DB is ready. (Starting ≠ ready.)
+- `init.sql` runs automatically **only when the volume is empty** (first start).
+
+## 8. Volumes ⭐
+
+- Container deleted → its files deleted. **Volume** = storage outside the container, managed by Docker.
+- **Container = Excel (the program). Volume = your .xlsx file (the data).**
+- `pgdata:/var/lib/postgresql/data` → Postgres writes its files into the volume.
+- **Named volume** (`pgdata`) = Docker manages it. **Bind mount** (`./db/init.sql`) = a real file from your Mac.
+- `compose down` → volume kept. `compose down -v` → volume deleted, data gone.
+- Rule: **anything you can't lose → volume.**
+- Real world: AWS disk = **EBS** · Kubernetes = **PersistentVolume** · managed DB = **RDS**.
+
+## 9. Debugging
+
+- ⭐ Loop: Symptom → Evidence → Hypothesis → Test → Fix → Verify.
+
+| Error | Meaning |
+|---|---|
+| `connection refused` | nothing is listening on that port |
+| `go.mod file not found` / `not a git repository` | wrong folder → `pwd` |
+| `missing go.sum entry` | `go mod tidy` |
+| `undefined: json` | forgot an `import` |
+| `/healthz` 503 | DB down → `docker ps -a` |
+
+- `ping` = is the machine up? `curl` = is the app up?
+- Logs (time + message) = first thing to read.
+
+## 10. Commands
+
+```bash
+# git
+git status · git add . · git commit -m "msg" · git push · git log --oneline
+
+# go
+go run .              # build + run
+go mod tidy           # fix dependencies
+
+# docker
+docker ps -a          # all containers (also stopped)
+docker logs NAME      # what the container printed
+
+# compose
+docker compose up -d --build
+docker compose ps
+docker compose logs app
+docker compose down        # keep volumes
+docker compose down -v     # delete volumes too
+
+# test
+curl -i localhost:8081/healthz
+curl -X POST localhost:8081/components/3/status -d '{"status":"down"}'
+echo $DATABASE_URL
+```
+
+nano: `Ctrl+O` save · `Ctrl+X` exit · `Ctrl+W` search
