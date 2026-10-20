@@ -141,9 +141,31 @@ Symptom → Evidence → Hypothesis → Test → Fix → Verify
 - Nobody codes by heart. Job = **read, understand, debug**. Look up syntax.
 - ⭐ **Stateless app** = app remembers nothing, DB holds all data.
   → kill / restart / run 10 copies, no data lost. K8s depends on this.
-- ⭐ **Container** = app + everything it needs in one box. Runs the same everywhere.
+- ⭐ **Container** = app + everything it needs (libs, OS files), isolated from the host. Runs the same everywhere.
 - ⭐ **Multi-stage build** = kitchen (build tools) + plate (only the app). ~900MB → ~10MB.
 - ⭐ **Layer caching**: copy `go.mod` first, code later → rebuilds are fast.
 - ⭐ **Never run as root** in a container (`USER nonroot`).
 - `distroless` = no shell, no tools. Less to hack.
-- Image = recipe/frozen box. Container = a running copy of it.
+- **Image** = read-only template (built from Dockerfile). **Container** = a running instance of an image.
+- ⭐ **Every container = its own little computer. `localhost` = "me".**
+  Inside a container, `localhost` is the container, NOT your Mac.
+- `host.docker.internal` = "my Mac", seen from inside Docker (Mac/Windows only).
+- `docker run --rm` = delete container when it stops (good for tests).
+- ⭐ "Works on my laptop, fails in container" → usually `localhost`. A container can't
+  reach other containers via `localhost`. Give the right address.
+- DB is there to **remember**. Because DB remembers, the app can be **stateless**. (not the other way)
+- 💉 SQL injection: `/1; DROP TABLE x` glued into SQL = table deleted. `$1` = input is data, never a command.
+- ⭐ **Docker Compose** = one YAML file describes all containers (+ network, volumes). One command: `docker compose up -d --build`.
+- ⭐ Compose creates a **network**; each **service name is a DNS name** on it. App reaches DB at `db:5432`.
+- ⭐ **Volume**: a container's own files are deleted with the container. A **named volume** is Docker-managed
+  storage that outlives containers. `pgdata:/var/lib/postgresql/data` = Postgres writes its data into the volume.
+  Recreate container → same volume → data still there. `docker compose down -v` deletes volumes.
+- ⭐ **Named volume** (`pgdata:`, Docker manages it) vs **bind mount** (`./db/init.sql:...`, a file from your Mac).
+- `depends_on: service_healthy` = start app only when DB is **ready**.
+- Official postgres image: on first start with an **empty** data dir, it runs every `.sql` in
+  `/docker-entrypoint-initdb.d/`. Data already exists → skipped (protects your data).
+- ⭐ **Compose does NOT reuse old containers.** It creates its own (`status-page-db-1`) from the image.
+  Image = template with no data → new container starts empty.
+- `init.sql` = the SQL I typed by hand in Step 4, saved in a file, run automatically.
+- **Mount** = attach storage to a folder path inside the container (like plugging a USB drive).
+- Volume test: `compose down` → data kept · `compose down -v` → volume deleted → empty DB → init.sql runs again.

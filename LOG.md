@@ -151,3 +151,38 @@ curl -i -X POST localhost:8081/components/3/status -d '{"status":"down"}'   # 20
 - `db.Exec` UPDATE · `RowsAffected()==0` → 404 · success → 204 No Content.
 - Restarted app → still "down" → **stateless app**, data lives in DB.
 - Delete `pg` container → data gone (no volume yet).
+
+### Step 7: Dockerfile
+
+**What:** multi-stage Dockerfile → image `status-page:dev` (26.7 MB).
+**Why:** app + everything it needs in one box. Runs the same everywhere.
+
+```bash
+docker build -t status-page:dev .
+docker images status-page
+docker run --rm -p 8081:8081 -e DATABASE_URL=...@localhost:5432/...            # 503
+docker run --rm -p 8081:8081 -e DATABASE_URL=...@host.docker.internal:5432/... # 200
+```
+
+- Stage 1 `golang:1.25` builds · Stage 2 `distroless` runs only `/app` as `nonroot`.
+- `COPY go.mod go.sum` before code = layer caching.
+- Inside a container, `localhost` = the container itself → DB not found → 503.
+  `host.docker.internal` = the Mac → reaches `pg` via its `-p 5432:5432` → 200.
+
+### Step 8: Docker Compose
+
+**What:** `compose.yaml` with 2 services (`db`, `app`) + named volume `pgdata` + `db/init.sql`.
+**Why:** one command rebuilds everything from files in git. No manual steps.
+
+```bash
+docker compose up -d --build     # build app image, create network + volume + 2 containers
+docker compose down              # delete containers + network, KEEP volume
+docker compose down -v           # also delete volume → data gone
+```
+
+- Compose created NEW containers from images, did not touch old `pg`.
+- `init.sql` mounted into `/docker-entrypoint-initdb.d/` → runs on first start (empty data dir) only.
+- App reaches DB at `db:5432` (service name = DNS name on Compose network).
+- `healthcheck` (`pg_isready`) + `depends_on: service_healthy` → app starts after DB is ready.
+- `restart: unless-stopped` → survives Docker/Mac restart.
+- Test: POST down → `down` → `up` → still down (volume kept). `down -v` → `up` → operational.
