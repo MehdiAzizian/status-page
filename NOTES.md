@@ -1,6 +1,7 @@
 # Notes
 
 The important points only. ⭐ = asked in interviews.
+**Before each session: read only the ⭐ lines (5 min).**
 
 ---
 
@@ -214,4 +215,6 @@ nano: `Ctrl+O` save · `Ctrl+X` exit · `Ctrl+W` search
 - Delete one resource: remove its block + `apply` (normal) · `destroy -target=...` (emergency only).
 - ⭐ **Blast radius** = how much breaks if something goes wrong. Separate states for dev/prod.
 - `apply` morning, `destroy` evening → $0 overnight, same env next day.
+- Terraform adds only what's **missing** (2nd bucket → "1 to add", not 2).
+- Prod: almost never destroy. Daily work = `plan` + `apply`.
 - ⭐ `.gitignore`: commit what you wrote, ignore generated + secret (`.terraform/`, `*.tfstate*`).
