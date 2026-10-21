@@ -18,6 +18,14 @@ type Component struct {
 	Status string `json:"status"`
 }
 
+func validStatus(s string) bool {
+	switch s {
+	case "operational", "degraded", "down":
+		return true
+	}
+	return false
+}
+
 func main() {
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
@@ -95,7 +103,7 @@ mux.HandleFunc("POST /components/{id}/status", func(w http.ResponseWriter, r *ht
 		http.Error(w, "bad json", http.StatusBadRequest)
 		return
 	}
-	if body.Status != "operational" && body.Status != "degraded" && body.Status != "down" {
+	if !validStatus(body.Status) {
 		http.Error(w, "status must be operational, degraded or down", http.StatusBadRequest)
 		return
 	}

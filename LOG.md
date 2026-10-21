@@ -186,3 +186,66 @@ docker compose down -v           # also delete volume → data gone
 - `healthcheck` (`pg_isready`) + `depends_on: service_healthy` → app starts after DB is ready.
 - `restart: unless-stopped` → survives Docker/Mac restart.
 - Test: POST down → `down` → `up` → still down (volume kept). `down -v` → `up` → operational.
+
+### Step 9: tests
+
+**What:** `validStatus()` function + table-driven test in `main_test.go`.
+**Why:** CI will run tests on every push. Fail = no deploy.
+
+```bash
+go test ./... -v
+```
+
+- `validStatus` checks the client's input in POST (not the DB).
+- Broke it on purpose (removed "down") → `validStatus("down") = false, want true` → FAIL. Put back → PASS.
+
+**Phase 0 done.**
+
+---
+
+## Phase 1: AWS + Terraform
+
+### Step 1: cost investigation (real zombie)
+
+**Problem:** AWS billed ~$0.78/month since May 2026 (free year ended). $3.90 past due.
+**Found:** Cost Explorer → Group by Usage type → `EBS:VolumeUsage.gp3` ($0.64) + tax ($0.14).
+**Cause:** old `testInstance` (t2.micro, us-east-1) **stopped** since 2025 → its 8 GiB EBS disk still billed.
+**Fix:** terminated the instance (root disk had Delete on termination = Yes) → Volumes = 0.
+**Lesson:** stop ≠ delete. Disks outlive servers. Always check Volumes after cleanup.
+
+### Step 2: account safety (new account)
+
+- New Free-plan account: $100 credits, 6 months (+$100 via activities).
+- Account is a member of an AWS Organization → **no own root** (centralized root access). MFA on my login (TOTP).
+- Budget `monthly-5` (+ `monthly-10`). Budgets only email, they don't stop spending.
+- Region: **eu-north-1 (Stockholm)**: EU, cheap, close enough.
+
+### Step 3: connect Mac to AWS
+
+```bash
+brew tap hashicorp/tap && brew install hashicorp/tap/terraform
+brew install awscli                    # arm64 version
+aws configure                          # key of IAM user "terraform", eu-north-1, json
+aws sts get-caller-identity            # → arn:aws:iam::905223168457:user/terraform
+```
+
+- IAM user `terraform`: no console, AdministratorAccess, CLI access key.
+- Problems fixed: macOS upgrade → Command Line Tools outdated (`xcode-select --install`);
+  old aws-cli was x86_64 → `bad CPU type` → reinstalled arm64 via brew.
+- Old key from old account was in `~/.aws/credentials` → overwritten.
+
+### Step 4: first Terraform resource
+
+`infra/main.tf`: provider aws (eu-north-1) + `aws_s3_bucket.test` (`mahdi-tf-test-2026`).
+
+```bash
+terraform init      # download AWS provider
+terraform plan      # Plan: 1 to add
+terraform apply     # created → seen in S3 console
+terraform plan      # No changes (desired = actual)
+terraform destroy   # 1 destroyed → gone
+terraform apply     # back again
+```
+
+- `terraform.tfstate` appeared = Terraform's memory. Not in git.
+- `destroy` removes only what this state created. Delete one thing → remove block + apply.
