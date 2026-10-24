@@ -7,6 +7,8 @@ The important points only. ⭐ = asked in interviews.
 
 ## 1. The project
 
+- **Status page** = page showing if a company's services work (Website ✅ API ⚠️ Payments ❌). E.g. githubstatus.com.
+
 - Small Go app (status page) + PostgreSQL database.
 - The app is only practice. The real skills: Docker, Linux, CI/CD, AWS, Terraform, Ansible, K8s.
 - Path: laptop → Docker → AWS → automatic deploy → break it → recover → Kubernetes.
@@ -218,3 +220,16 @@ nano: `Ctrl+O` save · `Ctrl+X` exit · `Ctrl+W` search
 - Terraform adds only what's **missing** (2nd bucket → "1 to add", not 2).
 - Prod: almost never destroy. Daily work = `plan` + `apply`.
 - ⭐ `.gitignore`: commit what you wrote, ignore generated + secret (`.terraform/`, `*.tfstate*`).
+
+## 15. AWS network
+
+- **VPC** = private network (`10.0.0.0/16`). **Subnet** = piece of it (`10.0.1.0/24`). **IGW** = door to internet.
+  **Route table** = signpost (`0.0.0.0/0` → IGW). **Association** = attach signpost to subnet.
+- ⭐ **Public subnet** = its route table sends `0.0.0.0/0` to an IGW. That's all.
+- ⭐ CIDR: `/16` ≈ 65k addresses, `/24` = 256. Bigger number = smaller range. `0.0.0.0/0` = everywhere.
+- ⭐ `aws_vpc.main.id` = reference → Terraform figures the order itself (dependency graph).
+- VPC, subnet, IGW, route table = $0.
+- Route table: `10.0.0.0/16 → local` (inside VPC, automatic) · `0.0.0.0/0 → igw` (internet).
+- ⭐ AWS reserves **5 IPs** per subnet → `/24` = 251 usable.
+- Every account has a **default VPC**. Ours is separate, made from code.
+- ⭐ "How does a server reach the internet?" → public subnet + route `0.0.0.0/0` → IGW + public IP.

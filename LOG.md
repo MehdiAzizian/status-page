@@ -249,3 +249,13 @@ terraform apply     # back again
 
 - `terraform.tfstate` appeared = Terraform's memory. Not in git.
 - `destroy` removes only what this state created. Delete one thing → remove block + apply.
+
+### Step 5: network (VPC)
+
+**What:** removed test bucket; added VPC `10.0.0.0/16`, public subnet `10.0.1.0/24`, Internet Gateway,
+route table (`0.0.0.0/0 → igw`), association. Plan: 5 to add, 1 to destroy. Cost $0.
+**Why:** the server needs a network and a path to the internet.
+
+- Path: internet → IGW → route table → public subnet → (server next).
+- Subnet shows 251 IPs: AWS reserves 5.
+- Default VPC also exists in the account (AWS made it). Ours is `status-page`.
