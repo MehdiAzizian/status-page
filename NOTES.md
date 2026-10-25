@@ -233,3 +233,14 @@ nano: `Ctrl+O` save · `Ctrl+X` exit · `Ctrl+W` search
 - ⭐ AWS reserves **5 IPs** per subnet → `/24` = 251 usable.
 - Every account has a **default VPC**. Ours is separate, made from code.
 - ⭐ "How does a server reach the internet?" → public subnet + route `0.0.0.0/0` → IGW + public IP.
+- Home ↔ AWS: home network = VPC · router (my phone hotspot) = IGW · routing rules = route table · laptop = EC2.
+- ⭐ **Security group** = server firewall. `ingress` = in, `egress` = out.
+  22 SSH (only my IP `/32`) · 80 HTTP · 443 HTTPS (everyone).
+- `variable` + `terraform.tfvars` = input values, kept out of git. `var.my_ip`.
+- Hotspot IP changes → SSH fails → update tfvars + apply.
+- ⭐ SG = **default deny** · **stateful** (reply auto-allowed) · attach to EC2.
+- ⭐ **SG vs NACL**: SG = on server, stateful, allow only. NACL = on subnet, stateless, allow + deny.
+- Terraform reads **all `.tf` files** in the folder + **auto-loads `terraform.tfvars`**. Missing value → it asks.
+- `git check-ignore -v FILE` = which `.gitignore` line ignores this file.
+- Variable set twice → error. One value = `string`. Many = `list(string)` → `["a", "b"]`. `#` = comment.
+- ⭐ Real world: no port 22 → **SSM Session Manager** (connect via AWS, IP doesn't matter).

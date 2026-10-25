@@ -259,3 +259,12 @@ route table (`0.0.0.0/0 → igw`), association. Plan: 5 to add, 1 to destroy. Co
 - Path: internet → IGW → route table → public subnet → (server next).
 - Subnet shows 251 IPs: AWS reserves 5.
 - Default VPC also exists in the account (AWS made it). Ours is `status-page`.
+
+### Step 6: security group (firewall)
+
+**What:** `aws_security_group.web`: in 22 from my IP only, in 80/443 from everyone, out all.
+**Why:** only I can SSH into the server; everyone can see the website.
+
+- `variable "my_ip"` + `terraform.tfvars` (auto-loaded, in .gitignore). Phone hotspot IP changes → swap line with `#` + apply.
+- Error "Attribute redefined" = same variable set twice in tfvars.
+- SG exists but protects nothing until attached to the EC2 (next step).
