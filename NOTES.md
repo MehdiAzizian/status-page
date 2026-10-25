@@ -282,6 +282,23 @@ nano: `Ctrl+O` save · `Ctrl+X` exit · `Ctrl+W` search
 - ⭐ New server = **new random public IP**. Fixed IP = **Elastic IP** (needed for a domain name).
 - Private IP also changes, but stays inside the subnet range (`10.0.1.x`).
 
+- ⭐ Split by topic: `main.tf` (provider) · `network.tf` · `security.tf` · `server.tf` · `variables.tf` · `outputs.tf`. Terraform reads all `.tf` as one.
+- `terraform fmt` = format code · `terraform validate` = syntax check (no AWS).
+- ⭐ Refactor rule: code moved, not changed → plan must show the same result as before.
+
+- ⭐ Linux text tools: `grep "x" file` (find lines, `-n` = line numbers) · `sed -n 'A,Bp' file` (print lines A–B) ·
+  `head -n N` / `tail -n N` (first/last lines, `tail -f` = live log) · `cat` (whole file) · `>` save (overwrite) · `>>` append.
+- ⭐ grep `^` = start of line · `-E 'a|b'` = a OR b. `grep -nE '^(resource|data)' main.tf` = only block starts.
+- grep shows matching **lines only**. A block ends one line before the next block starts.
+- Unknown file → read first: `less file` (space/arrows, `/word` search, `q` quit). Known structure → grep.
+- `mv a b` = move or rename (here: replace main.tf with main.tmp).
+
+- ⭐ **Remote state** in S3: state not only on my Mac → Mac dies / teammate runs TF → no zombies, no duplicates.
+- State bucket is created **outside** this Terraform (else `destroy` deletes its own memory).
+- ⭐ **Versioning** = S3 keeps old versions of the state → restore if broken.
+- ⭐ **Locking** (`use_lockfile = true`) = only one apply at a time → state can't be corrupted.
+- `backend "s3" { bucket, key, region, use_lockfile, encrypt }` inside `terraform { }` → `terraform init -migrate-state`.
+
 ## 19. My mistakes (Phase 1)
 
 - Blocked AWS at my bank → bill stayed → past due. Real cause: stopped instance's disk.

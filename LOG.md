@@ -285,3 +285,10 @@ ssh -i ~/.ssh/status-page ubuntu@13.51.170.239    # logged in!
 - Cost ~$0.025/h → destroy at end of session.
 - destroy (8 destroyed) → apply (8 added) → new public IP 51.20.255.32, new private IP 10.0.1.205 → SSH OK.
 - Old IP hung → server gone. Fixed IP later = Elastic IP (for the domain).
+
+### Step 8a: split files
+
+- Used Linux: `grep -nE '^(terraform|provider|resource|data|variable|output)' main.tf` → block start lines.
+- `sed -n 'A,Bp' main.tf > file.tf` for each topic · `head -n 13 main.tf > main.tmp && mv main.tmp main.tf`.
+- Files: main (provider) · network · security · server · variables · outputs.
+- `terraform fmt && validate && plan` → still "8 to add" → refactor changed nothing.
