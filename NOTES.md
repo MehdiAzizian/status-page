@@ -151,96 +151,167 @@ nano: `Ctrl+O` save · `Ctrl+X` exit · `Ctrl+W` search
 
 ---
 
-# Phase 1: AWS
+# Phase 1: AWS + Terraform
 
-## 12. AWS basics
+## 12. AWS account & safety
 
-- ⭐ **Delete/stop a server → its disk (EBS volume) can stay → you keep paying.** Same as Docker volumes.
-- **Zombie resource** = forgotten leftover that still costs money (disk, snapshot, public IP).
-- Find costs: Cost Explorer → Group by **Usage type**. No region prefix = us-east-1.
-- `EBS:VolumeUsage.gp3` = disk storage. ~$0.08 per GB per month.
-- Stopped server = no compute cost, but **disk still billed**.
-- Blocking AWS at the bank ≠ cancel. Debt stays → account suspended.
-- **Stop** = server paused, disk kept (still billed). **Terminate** = server deleted forever.
-- ⭐ **Delete on termination** (Storage tab): Yes → disk deleted with server. No → disk stays → zombie.
-- Always verify after cleanup: Instances + Volumes empty.
-- ⭐ **EC2 instance** = virtual server (CPU, RAM, OS). **EBS volume** = its disk.
-  Instance ≈ container (but a full computer) · EBS ≈ Docker volume.
-- Attached disk can't be deleted → delete the **instance**, root disk follows. Delete the parent, children follow.
 - **Free plan** (new account): $100 credits, 6 months. Credits first, no surprise bills. Out of credits/days → account stops.
-- ⭐ **Root account = master key.** MFA on it, then don't use it daily.
-- ⭐ **Root** = owner (signup email), can do everything. **IAM** = service to create users/roles with limited permissions.
-  Root for emergencies only. Daily work → IAM user.
+- ⭐ **Root** = owner (signup email), can do everything → emergencies only. **IAM** = service to create users/roles with limited permissions. Daily work → IAM user.
+- ⭐ **Root account = master key** → MFA on it.
+- ⭐ **AWS Organizations** = many accounts under one parent. **Centralized root access** = member accounts have no own root; parent controls it. My Free-plan account works like this.
 - ⭐ **Least privilege** = give only the permissions needed.
-- ⭐ **AWS Organizations** = many accounts under one parent. **Centralized root access** = member accounts
-  have no own root; parent controls it. My Free-plan account works like this.
-- Every account starts with a **default security group** (firewall). Normal.
+- IAM user `terraform` = identity for programs (no console). **Access key** = its login for CLI. Secret shown once. Never in chat/code/git. Later replaced by **OIDC** (no stored keys).
+- ⭐ **Budget alert** = email before money/credits burn silently. **Budgets do NOT stop spending** → you must act (destroy).
 - ⭐ **Choose a region by:** law (EU data → EU), price, latency. We use **eu-north-1 (Stockholm)**.
 - ⭐ **Resources are per region.** Console shows only the selected region → zombies hide in other regions.
-- IAM user `terraform` = identity for programs (no console). **Access key** = its login for CLI.
-  Secret shown once. Never in chat/code/git. Later replaced by **OIDC** (no stored keys).
-- ⭐ **Budget alert** = email before money/credits burn silently.
-- ⭐ **Budgets do NOT stop spending.** Only email. You must act (destroy).
+- Every account starts with a **default VPC** and **default security group**. Normal. Ours are separate, made from code.
 
-## 13. AWS CLI
+## 13. Cost lesson: the zombie disk
 
-- `aws configure` → saves keys in `~/.aws/credentials` (plain text, never in git) + region in `~/.aws/config`.
+- ⭐ **Stop** = server paused, **disk still billed**. **Terminate** = server deleted forever.
+- ⭐ Delete/stop a server → its disk (EBS) can stay → you keep paying. Same as Docker volumes.
+- **Zombie resource** = forgotten leftover that still costs money (disk, snapshot, public IP).
+- ⭐ **Delete on termination** (Storage tab): Yes → disk deleted with server. No → disk stays → zombie.
+- Attached disk can't be deleted → delete the **instance**, root disk follows. Delete the parent, children follow.
+- Find costs: Cost Explorer → Group by **Usage type**. No region prefix = us-east-1.
+- `EBS:VolumeUsage.gp3` = disk storage, ~$0.08 per GB per month.
+- Always verify after cleanup: Instances + Volumes empty.
+- Blocking AWS at the bank ≠ cancel. Debt stays → account suspended.
+
+## 14. EC2, EBS, S3
+
+- ⭐ **EC2 instance** = virtual server (CPU, RAM, OS). **EBS volume** = its disk. Instance ≈ container (but a full computer) · EBS ≈ Docker volume.
+- ⭐ **EBS (block storage)** = disk for 1 server, you pick size, pay full size even empty.
+- ⭐ **S3 (object storage)** = no size, grows itself, pay only what you store. Backups, images, logs, Terraform state. Bucket names unique worldwide. Empty bucket = $0.
+
+## 15. AWS CLI + Mac setup
+
+- `aws configure` → keys in `~/.aws/credentials` (plain text, never in git) + region in `~/.aws/config`.
 - ⭐ `aws sts get-caller-identity` = "who am I?" First command when AWS access fails.
+- ⭐ **ARN** = unique ID of anything in AWS: `arn:aws:SERVICE::ACCOUNT:TYPE/NAME`.
 - Terraform install: `brew tap hashicorp/tap && brew install hashicorp/tap/terraform`.
-- OS upgrade → "Command Line Tools too outdated" → reinstall them (`xcode-select --install`). Read the error first.
-- ⭐ `bad CPU type in executable` = program built for another CPU. **x86_64/amd64** (Intel) vs **arm64** (Apple, AWS Graviton).
-  Same issue exists for Docker images and EC2 types. `file $(which X)` shows the architecture.
-- `which X` = where is this program? `hash -r` = forget old paths.
+- `which X` = where is this program? `hash -r` = forget old paths. `file $(which X)` = its CPU type.
 
-## 14. Terraform
+## 16. Terraform
 
 - Why AWS: we need a real server on the internet. AWS rents servers (EC2) + network + firewall + disk.
-- ⭐ **IaC (Infrastructure as Code)**: infra described in files, not clicks → repeatable, reviewable, no forgotten clicks.
+- ⭐ **IaC (Infrastructure as Code)**: infra in files, not clicks → repeatable, reviewable, no forgotten clicks.
 - ⭐ **Terraform = Compose for the cloud.** `main.tf` ≈ `compose.yaml` · `apply` ≈ `up` · `destroy` ≈ `down`.
-- Terraform remembers what it created → `destroy` removes all of it → no zombies.
-- Terraform uses the `terraform` IAM user's key (from `aws configure`) to act in AWS.
-- ⭐ **ARN** = unique ID of anything in AWS: `arn:aws:SERVICE::ACCOUNT:TYPE/NAME`.
+- Terraform uses the `terraform` IAM user's key (from `aws configure`).
 - **Provider** = plugin that talks to a cloud's API (`hashicorp/aws`).
 - `resource "TYPE" "NICKNAME" { ... }` → e.g. `aws_s3_bucket` `test`.
-- ⭐ Workflow: `terraform init` (download provider) → `plan` (dry run, changes nothing) → `apply` (do it) → `destroy`.
-- **S3** = cloud file storage. Bucket names are unique worldwide. Empty bucket = $0.
-- ⭐ **EBS (block storage)** = disk for 1 server, you pick size, pay full size even empty.
-  **S3 (object storage)** = no size, grows itself, pay only what you store. Backups, images, logs, Terraform state.
+- ⭐ Workflow: `init` (download provider) → `plan` (dry run) → `apply` (do it) → `destroy`.
 - Plan symbols: `+` create · `~` change · `-` destroy. `(known after apply)` = AWS decides it (e.g. ARN).
 - ⭐ **Always read `Plan: X to add, Y to change, Z to destroy` before apply.** Surprise destroy = danger.
 - ⭐ `plan` compares 3 things: `main.tf` (desired) · `terraform.tfstate` (what TF made) · real AWS (actual).
-  Same → "No changes". Different → + / ~ / -.
-- ⭐ **`terraform.tfstate`** = Terraform's memory (IDs of what it created). May contain secrets → never in git, never edit.
-  Later: remote state in S3.
-- ⭐ **Desired state vs actual state.** Run again with no changes → nothing happens = **idempotent**.
+- ⭐ **`terraform.tfstate`** = Terraform's memory. May contain secrets → never in git, never edit. Later: remote state in S3.
+- ⭐ **Desired vs actual state.** No changes → nothing happens = **idempotent**.
+- Terraform adds only what's **missing** (2nd bucket → "1 to add", not 2).
 - `destroy` deletes only what **this folder's state** created. Not clicked things, not other folders.
 - Delete one resource: remove its block + `apply` (normal) · `destroy -target=...` (emergency only).
 - ⭐ **Blast radius** = how much breaks if something goes wrong. Separate states for dev/prod.
-- `apply` morning, `destroy` evening → $0 overnight, same env next day.
-- Terraform adds only what's **missing** (2nd bucket → "1 to add", not 2).
-- Prod: almost never destroy. Daily work = `plan` + `apply`.
-- ⭐ `.gitignore`: commit what you wrote, ignore generated + secret (`.terraform/`, `*.tfstate*`).
-
-## 15. AWS network
-
-- **VPC** = private network (`10.0.0.0/16`). **Subnet** = piece of it (`10.0.1.0/24`). **IGW** = door to internet.
-  **Route table** = signpost (`0.0.0.0/0` → IGW). **Association** = attach signpost to subnet.
-- ⭐ **Public subnet** = its route table sends `0.0.0.0/0` to an IGW. That's all.
-- ⭐ CIDR: `/16` ≈ 65k addresses, `/24` = 256. Bigger number = smaller range. `0.0.0.0/0` = everywhere.
+- `apply` morning, `destroy` evening → $0 overnight. Prod: almost never destroy. Daily work = `plan` + `apply`.
 - ⭐ `aws_vpc.main.id` = reference → Terraform figures the order itself (dependency graph).
-- VPC, subnet, IGW, route table = $0.
-- Route table: `10.0.0.0/16 → local` (inside VPC, automatic) · `0.0.0.0/0 → igw` (internet).
-- ⭐ AWS reserves **5 IPs** per subnet → `/24` = 251 usable.
-- Every account has a **default VPC**. Ours is separate, made from code.
-- ⭐ "How does a server reach the internet?" → public subnet + route `0.0.0.0/0` → IGW + public IP.
-- Home ↔ AWS: home network = VPC · router (my phone hotspot) = IGW · routing rules = route table · laptop = EC2.
-- ⭐ **Security group** = server firewall. `ingress` = in, `egress` = out.
-  22 SSH (only my IP `/32`) · 80 HTTP · 443 HTTPS (everyone).
-- `variable` + `terraform.tfvars` = input values, kept out of git. `var.my_ip`.
-- Hotspot IP changes → SSH fails → update tfvars + apply.
-- ⭐ SG = **default deny** · **stateful** (reply auto-allowed) · attach to EC2.
-- ⭐ **SG vs NACL**: SG = on server, stateful, allow only. NACL = on subnet, stateless, allow + deny.
 - Terraform reads **all `.tf` files** in the folder + **auto-loads `terraform.tfvars`**. Missing value → it asks.
+- `variable` + `terraform.tfvars` = input values, kept out of git. `var.my_ip`.
+- One value = `string`. Many = `list(string)` → `["a", "b"]`. `#` = comment.
+- ⭐ `.gitignore`: commit what you wrote, ignore generated + secret (`.terraform/`, `*.tfstate*`, `*.tfvars`).
 - `git check-ignore -v FILE` = which `.gitignore` line ignores this file.
-- Variable set twice → error. One value = `string`. Many = `list(string)` → `["a", "b"]`. `#` = comment.
+
+## 17. Network
+
+| Home | AWS |
+|---|---|
+| home network (192.168.x.x) | **VPC** (`10.0.0.0/16`) |
+| part of the network | **Subnet** (`10.0.1.0/24`) |
+| router (my phone hotspot) | **Internet Gateway (IGW)** |
+| routing rules | **Route table** (`0.0.0.0/0` → IGW) + **association** to the subnet |
+| laptop | **EC2** |
+
+- ⭐ **Public subnet** = its route table sends `0.0.0.0/0` to an IGW. That's all.
+- Route table: `10.0.0.0/16 → local` (inside VPC, automatic) · `0.0.0.0/0 → igw` (internet).
+- ⭐ CIDR: `/16` ≈ 65k · `/24` = 256 · `/32` = 1 IP · `0.0.0.0/0` = everywhere. Bigger number = smaller range.
+- ⭐ AWS reserves **5 IPs** per subnet → `/24` = 251 usable.
+- VPC, subnet, IGW, route table = $0.
+- ⭐ "How does a server reach the internet?" → public subnet + route `0.0.0.0/0` → IGW + public IP.
+
+## 18. Security group (firewall)
+
+- ⭐ **Security group** = firewall attached to a server. `ingress` = in, `egress` = out.
+- Ours: 22 SSH (only my IP `/32`) · 80 HTTP · 443 HTTPS (everyone) · out all.
+- ⭐ **Default deny**: port 5432 has no rule → blocked, without writing "block".
+- ⭐ **Stateful**: visitor comes in on 80 → the page going back is allowed automatically.
+- ⭐ **SG vs NACL**: SG = on server, stateful, allow only. NACL = on subnet, stateless, allow + deny.
+- SG protects nothing until attached to the EC2.
+- Hotspot IP changes → SSH fails → update tfvars + apply.
 - ⭐ Real world: no port 22 → **SSM Session Manager** (connect via AWS, IP doesn't matter).
+
+## 18b. EC2 server
+
+- Cost (Stockholm, approx): `t4g.small` ~$0.02/h · public IP ~$0.005/h · 2h session ≈ $0.06 · 24/7 month ≈ $20 → destroy after session.
+- `t4g` = ARM (like my Mac), cheaper. `small` = 2 GB RAM (Docker + Postgres + app).
+- ⭐ **SSH key**: private key stays on Mac (`~/.ssh/status-page`), public key goes to server. No password.
+- `ssh-keygen -t ed25519 -f ~/.ssh/status-page -N ""` · login: `ssh -i ~/.ssh/status-page ubuntu@IP`.
+- ⭐ **AMI** = server image (OS). Like a Docker image, but for a whole server.
+- `data` block = **look up** something existing (doesn't create). `output` = print a value after apply.
+- EC2 needs: AMI · instance type · subnet · security group · key pair.
+
+- ⭐ **SSH login**: public key on server (`~/.ssh/authorized_keys`) → server sends challenge → Mac signs with private key → server checks. Private key never leaves Mac.
+- SSH ≠ TLS. Same idea (key pair). SSH = server login (port 22). TLS = HTTPS.
+- Key types: `rsa` (old) · `ed25519` (modern standard). `-N ""` = no passphrase (ok for learning).
+- `~/.ssh`: `id_*` private · `*.pub` public · `known_hosts` = servers I connected to.
+- ⭐ **Terraform grammar**: `KIND "TYPE" "NAME" { arg = value }`. KIND: `resource` create · `data` look up · `variable` input · `output` print.
+- Use another block: `TYPE.NAME.attribute` (e.g. `aws_subnet.public.id`).
+- ⭐ **EC2 = 5 questions**: which OS (AMI) · how big (type) · where (subnet) · which firewall (SG) · how to log in (key).
+- ⭐ Argument names → docs: registry.terraform.io → resource → Argument Reference. Know what you need, look up the name.
+
+- ⭐ **Private key MAKES the signature (only on my Mac). Public key only CHECKS it (on the server).** Public key alone lets nobody in.
+- `aws_key_pair` uploads `.pub` → AWS puts it in `/home/ubuntu/.ssh/authorized_keys` → `ssh -i PRIVATE_KEY` logs in.
+- ⭐ Private key permissions must be `-rw-------` (600), or SSH refuses it.
+- ⭐ **Argument** = setting I write (left of `=`). **Attribute** = value AWS gives back (e.g. `id`).
+  `aws_subnet.public.id` = the `id` of the `aws_subnet` named `public` (= `subnet-00f1e...`).
+
+- ⭐ First SSH → server fingerprint saved in `~/.ssh/known_hosts`. Different later → warning (maybe fake server).
+- On the server: `aarch64` = ARM · private IP `10.0.1.x` from our subnet · `htop` = CPU/RAM live.
+
+- Destroy = money (server + public IP billed hourly) + proof everything is in code. Prod is never destroyed; ours is a dev/learning env.
+- `destroy` = all or nothing for the folder. Free things (VPC) rebuild in ~1 min anyway.
+
+- `output` = print a value after apply. `terraform output` = show again. `-raw` = value only.
+- ⭐ `ssh -i ~/.ssh/status-page ubuntu@$(terraform output -raw public_ip)` · `$( )` = run inside first, use result.
+- ⭐ New server = **new random public IP**. Fixed IP = **Elastic IP** (needed for a domain name).
+- Private IP also changes, but stays inside the subnet range (`10.0.1.x`).
+
+## 19. My mistakes (Phase 1)
+
+- Blocked AWS at my bank → bill stayed → past due. Real cause: stopped instance's disk.
+- macOS upgrade → "Command Line Tools too outdated" → `xcode-select --install`. Read the error first.
+- ⭐ `bad CPU type in executable` → old aws-cli was **x86_64** (Intel), Mac is **arm64** → reinstalled via brew. Same issue for Docker images and EC2 types.
+- Old key from old account was still in `~/.aws/credentials` (`aws configure` showed `****ICMD`).
+- aws-cli asked to install AI-agent skills/MCP → answered no.
+- `ssh ubuntu@PUBLIC_IP` → placeholder, use the real IP from `terraform output`.
+- `Attribute redefined` → set `my_ip` twice in tfvars → keep one line, comment the other with `#`.
+
+---
+
+# Interview answers (say them out loud)
+
+**"How do you create a firewall on AWS?"**
+> In AWS the firewall for a server is a **security group**. I create it with Terraform inside my VPC.
+> I add inbound rules: port, protocol, and who is allowed. In my project: SSH port 22 only from my IP,
+> and HTTP 80 and HTTPS 443 from everyone, because the website is public. Outbound I allow everything,
+> so the server can download updates. Then I attach it to the EC2 instance.
+> Everything not in a rule is blocked by default.
+
+**"How does a server in AWS reach the internet?"**
+> The server is in a **public subnet**. That subnet's route table sends all internet traffic (`0.0.0.0/0`)
+> to an **Internet Gateway**, and the server has a public IP. The security group decides which ports are open.
+
+**"Why Terraform instead of clicking in the console?"**
+> Clicks can't be repeated or reviewed, and people forget to delete things. With Terraform the infrastructure
+> is code in git: I can recreate it with `apply`, remove all of it with `destroy`, and `plan` shows every
+> change before it happens. I destroy and rebuild my whole setup every session.
+
+**"Image vs container?"**
+> An image is a read-only template with the app and everything it needs. A container is a running copy
+> of that image. I can run many containers from one image.

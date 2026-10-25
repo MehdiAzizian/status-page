@@ -268,3 +268,20 @@ route table (`0.0.0.0/0 → igw`), association. Plan: 5 to add, 1 to destroy. Co
 - `variable "my_ip"` + `terraform.tfvars` (auto-loaded, in .gitignore). Phone hotspot IP changes → swap line with `#` + apply.
 - Error "Attribute redefined" = same variable set twice in tfvars.
 - SG exists but protects nothing until attached to the EC2 (next step).
+
+### Step 7: EC2 server
+
+**What:** SSH key `~/.ssh/status-page` + `data aws_ami` (Ubuntu 24.04 arm64) + `aws_key_pair` + `aws_instance` (`t4g.small`, public subnet, SG) + `output public_ip`.
+**Why:** the server where the app will run.
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/status-page -N ""
+terraform apply                                   # → public_ip
+ssh -i ~/.ssh/status-page ubuntu@13.51.170.239    # logged in!
+```
+
+- Server: Ubuntu 24.04, aarch64, private IP 10.0.1.16, 6.7 GB disk, 1.8 GB RAM, 2 CPUs.
+- Private key signs, public key (on server in authorized_keys) checks.
+- Cost ~$0.025/h → destroy at end of session.
+- destroy (8 destroyed) → apply (8 added) → new public IP 51.20.255.32, new private IP 10.0.1.205 → SSH OK.
+- Old IP hung → server gone. Fixed IP later = Elastic IP (for the domain).
