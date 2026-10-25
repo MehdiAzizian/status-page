@@ -332,3 +332,9 @@ nano: `Ctrl+O` save · `Ctrl+X` exit · `Ctrl+W` search
 **"Image vs container?"**
 > An image is a read-only template with the app and everything it needs. A container is a running copy
 > of that image. I can run many containers from one image.
+
+**"Where do you keep Terraform state, and why?"**
+> In an S3 bucket, not on my laptop. If the state were only local and my laptop died, Terraform would forget
+> what it created. With remote state the whole team uses the same state. I enabled **versioning** so I can
+> restore an old state, and **locking** so two applies can't run at the same time and corrupt it.
+> The state bucket is created outside that Terraform code, so `destroy` can't delete it.

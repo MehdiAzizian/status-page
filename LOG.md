@@ -292,3 +292,19 @@ ssh -i ~/.ssh/status-page ubuntu@13.51.170.239    # logged in!
 - `sed -n 'A,Bp' main.tf > file.tf` for each topic · `head -n 13 main.tf > main.tmp && mv main.tmp main.tf`.
 - Files: main (provider) · network · security · server · variables · outputs.
 - `terraform fmt && validate && plan` → still "8 to add" → refactor changed nothing.
+
+### Step 8b: remote state in S3
+
+```bash
+aws s3api create-bucket --bucket mahdi-tfstate-905223168457 --region eu-north-1 --create-bucket-configuration LocationConstraint=eu-north-1
+aws s3api put-bucket-versioning --bucket mahdi-tfstate-905223168457 --versioning-configuration Status=Enabled
+# backend "s3" { bucket, key = "status-page/terraform.tfstate", region, use_lockfile = true, encrypt = true }
+terraform init -migrate-state
+terraform apply → aws s3 ls → terraform.tfstate in S3 → terraform destroy
+rm terraform.tfstate terraform.tfstate.backup   # local copies no longer used
+```
+
+- Empty state migrated → no S3 file until first apply.
+- Bucket made by hand (bootstrap), outside this state.
+
+**Phase 1 done.** Everything destroyed, $0 running.
