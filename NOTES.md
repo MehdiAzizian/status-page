@@ -338,3 +338,35 @@ nano: `Ctrl+O` save · `Ctrl+X` exit · `Ctrl+W` search
 > what it created. With remote state the whole team uses the same state. I enabled **versioning** so I can
 > restore an old state, and **locking** so two applies can't run at the same time and corrupt it.
 > The state bucket is created outside that Terraform code, so `destroy` can't delete it.
+
+---
+
+# Phase 2: Ansible
+
+## 20. What Ansible is
+
+- ⭐ **Terraform creates** servers/networks. **Ansible configures** what's inside servers (users, packages, Docker, app).
+- Why not SSH + type commands? Not repeatable, easy to forget, every server ends up different.
+- **Inventory** = list of servers (IPs, groups like `[web]`).
+- **Module** = one built-in action: `apt` install packages · `user` create user · `copy` copy file.
+- **Task** = one use of a module. **Playbook** = YAML file, list of tasks, run in order.
+- ⭐ **Agentless**: nothing installed on the server. Ansible connects over **SSH** and runs the tasks.
+- ⭐ **Idempotent**: run twice → 2nd run changes nothing (checks first). A bash script would redo it.
+- `ansible web -m ping` = check SSH + Python work. **Not** network ping.
+- `ansible.cfg`: `inventory = inventory.ini` · `StrictHostKeyChecking=accept-new` = accept new server, warn if it changes.
+- Before SSH/Ansible: `curl -4 ifconfig.me` → IP changed? update `terraform.tfvars` → apply.
+- ⭐ Auto IP: `data "http" "my_ip" { url = "https://checkip.amazonaws.com" }` → `["${chomp(data.http.my_ip.response_body)}/32"]`. No more manual IP.
+- `chomp()` = remove trailing newline · `"${x}/32"` = put a value inside text · new provider → `terraform init -upgrade`.
+- `..` = parent folder · `&&` = run next only if previous succeeded · `mkdir` = make folder.
+- Repo layout: app (root) · `infra/` Terraform creates server · `ansible/` Ansible configures it.
+- ⭐ GitHub = **code** · S3 = **state** (list of created resources) · AWS = **real resources**.
+- Inventory line = my ssh command in a file: `IP ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/status-page`.
+  Private key stays on my Mac; Ansible runs on my Mac and uses it like `ssh -i`.
+- ⭐ How a task runs: SSH in → copy small Python program → run → delete → result back. Needs only SSH + Python on server.
+- Mistake: named the file `invertory.ini` → Ansible "Unable to parse inventory" / "Could not match host pattern: web". "Can't find X" → check the file name first.
+- `Operation timed out` on port 22 → wrong/old IP (server gone) or firewall. Compare inventory IP with `terraform output`.
+- ⭐ Ansible reads `ansible.cfg` from the **current folder** → always run it from `ansible/`.
+- ⭐ Terraform knows the IP → Terraform writes `inventory.ini` (`local_file`). Manual copy = goes stale after every new server.
+- `local_file` = file on my **Mac**, not on AWS. Needs `terraform init -upgrade` (new provider `hashicorp/local`).
+- `ping` → `SUCCESS` + `pong` = SSH works + Python found on server. Ansible itself is NOT installed there (agentless).
+- Generated files (inventory.ini) → `.gitignore`.

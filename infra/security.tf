@@ -1,3 +1,6 @@
+data "http" "my_ip" {
+  url = "https://checkip.amazonaws.com"
+}
 resource "aws_security_group" "web" {
   name   = "status-page-web"
   vpc_id = aws_vpc.main.id
@@ -7,7 +10,7 @@ resource "aws_security_group" "web" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = [var.my_ip]
+    cidr_blocks = ["${chomp(data.http.my_ip.response_body)}/32"]
   }
 
   ingress {
