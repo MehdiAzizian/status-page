@@ -370,3 +370,18 @@ nano: `Ctrl+O` save · `Ctrl+X` exit · `Ctrl+W` search
 - `local_file` = file on my **Mac**, not on AWS. Needs `terraform init -upgrade` (new provider `hashicorp/local`).
 - `ping` → `SUCCESS` + `pong` = SSH works + Python found on server. Ansible itself is NOT installed there (agentless).
 - Generated files (inventory.ini) → `.gitignore`.
+- ⭐ Timeout but server running → my Mac's IP changed (new Wi-Fi). SG allows SSH only from old IP → `terraform apply` re-reads IP.
+- Playbook = YAML list of tasks. `hosts` = which group, `become: true` = sudo, `tasks` = jobs. Run: `ansible-playbook playbook.yml`.
+- `Gathering Facts` = Ansible reads server info first (OS, IP...). Always `ok`.
+- RECAP: `ok` = already right, `changed` = Ansible did something, `unreachable` = SSH failed.
+- `apt update_cache` always says `changed` → add `cache_valid_time: 3600` (skip if updated < 1h ago).
+- `apt` module: `name:` list of packages + `state: present` = install if missing. 1st run `changed`, 2nd `ok`.
+- ⭐ Use real modules, not `shell:` → modules check state first (idempotent), `shell` always says `changed`.
+- YAML: 2 spaces per level, `- ` = list item, space after `:`.
+- ⭐ YAML = only 3 rules: `key: value` (pair), `- item` (list), indent 2 spaces (inside). Ansible task = list item with `name` + module + module's arguments.
+- `docker` group = users in it can run `docker` without `sudo`. Module `user`, `append: true` keeps old groups.
+- ⭐ Don't memorize modules. Google "ansible <thing> module" → copy example from docs. Know the CONCEPT.
+- ⭐ IP = which machine. Port = which program on that machine (22 SSH, 80 HTTP, 443 HTTPS, 8081 my app, 5432 Postgres).
+- My Mac IP changed → `terraform apply` changes only the SG rule. Server + app keep running. No Ansible rerun needed.
+- Deploy = Ansible: `git` clone from GitHub → `docker_compose_v2` up. Same files as Mac, nothing rewritten.
+- `buildx isn't installed` warning → harmless, Compose uses old builder. Fix: apt package `docker-buildx`.
