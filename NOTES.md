@@ -385,3 +385,13 @@ nano: `Ctrl+O` save · `Ctrl+X` exit · `Ctrl+W` search
 - My Mac IP changed → `terraform apply` changes only the SG rule. Server + app keep running. No Ansible rerun needed.
 - Deploy = Ansible: `git` clone from GitHub → `docker_compose_v2` up. Same files as Mac, nothing rewritten.
 - `buildx isn't installed` warning → harmless, Compose uses old builder. Fix: apt package `docker-buildx`.
+- ⭐ Reverse proxy (Caddy) = single public entry on 80/443 → forwards to app:8081. App + DB stay hidden. Later does HTTPS.
+- Caddy = one more service in `compose.yaml` → starts with `compose up`, no manual `docker run`.
+- `localhost` = the machine I run the command on (server via SSH/Ansible, Mac in my browser).
+- Update app on server = `git push` → `ansible-playbook` (git pulls new commit, compose recreates).
+- ⭐ Reboot survives because: systemd starts Docker at boot → Docker restarts containers with `restart: unless-stopped`.
+- Check reboot happened: `uptime` (`up 1 min`).
+- ⭐ SSH hardening = `PasswordAuthentication no` + `PermitRootLogin no` → only my key works, nobody can guess passwords.
+- ⭐ 2 firewalls: AWS SG (outside server) + `ufw` (inside server) = defense in depth. One mistake ≠ open server.
+- Handler = runs only if a task with `notify` changed (restart ssh only when config changed).
+- `loop` + `{{ item }}` = same task for each value.
