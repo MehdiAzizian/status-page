@@ -454,49 +454,44 @@ SG allows only 22/80/443, app listens on 8081 → put a proxy on 80.
 ### ⭐ The whole flow in one line
 Terraform creates server + writes inventory → Ansible: Docker → clone repo → compose up (app + db + Caddy) → harden SSH + ufw → site live on :80, survives reboot.
 
-# Phase 3: CI/CD — the story
+# Phase 3: CI/CD — in one page
 
-### 1. The goal
-Before: I deployed by hand → `git push`, then `ansible-playbook`, and the server built the image itself.
-Now: I only `git push`. Everything else happens alone.
-- ⭐ **CI** = every push → code is **tested + built** automatically.
-- ⭐ **CD** = if CI is green → code is **deployed** automatically.
+**The goal:** I only do `git push`. Testing, building and deploying happen alone.
+**CI** = every push is tested and built automatically. **CD** = if CI is green, it's deployed automatically.
 
-### 2. CI: GitHub tests my code
-On every push, GitHub lends me a fresh Ubuntu machine and runs `.github/workflows/ci.yml`.
-- `on` = when · `jobs` = what · `runs-on` = which machine · `uses` = ready-made step (like an Ansible module) · `run` = my own shell command.
-- 🟡 running → 🟢 passed / 🔴 failed. Broken code stops **before** the server.
-- Alternatives: GitLab CI (common in Italy), Jenkins.
+**1. CI tests my code** 🧪
+On every push, GitHub lends me a fresh Ubuntu machine and runs `go test` from `.github/workflows/ci.yml`. Red = broken code stops there, before the server. Free for public repos. Alternatives: GitLab CI (common in Italy), Jenkins.
 
-### 3. CI: GitHub builds the image
-If tests pass (`needs: test`), GitHub builds the Docker image and pushes it to **GHCR** (GitHub's image storage, like Docker Hub).
-- ⭐ Build **once**, test it, deploy the **same** image. Server stops building.
-- Tag = commit ID (SHA) → ⭐ **rollback = run the old tag**.
+**2. CI builds the image** 📦
+If tests pass, GitHub builds the Docker image on an **ARM** machine (my server is ARM) and uploads it to **GHCR**, GitHub's image storage. The tag is the commit ID, so every old version stays there. Build once, deploy the same image. ⚠️ CI only checks what I test: a broken `compose.yaml` stayed green.
 
-### 4. CD problem: how does GitHub say "deploy NOW"?
-GitHub's IPs change every run → I can't allow them on port 22 (that = open to the whole world ❌).
-- ⭐ Firewall blocks traffic coming **IN**. Traffic going **OUT** is allowed.
-- Server downloading from GHCR = OUT → already works. Only the "NOW" message is the problem.
+**3. The problem: how does GitHub reach my server?** 🚧
+GitHub's IPs change every run, and SSH is allowed only from my Mac. Key fact: firewalls block traffic coming **in**, but going **out** is allowed. So the server downloading from GHCR is fine — only the "deploy now" message can't get in.
 
-### 5. The answer: SSM
-⭐ **SSM** (AWS Systems Manager) = AWS runs commands on my server. No SSH, no port 22.
-- **SSM agent** = small program already on the server. It keeps asking AWS (OUT) "any command for me?" → runs it.
-- GitHub leaves the order at AWS → agent picks it up → server pulls image from GHCR → restarts.
-- Bonus: fixes my own changing-IP problem too.
+**4. The answer: SSM** 📬
+An **agent** already on my server keeps asking AWS "any command for me?" (going out). GitHub leaves the order at AWS, the agent runs it, and the server pulls the image itself. No port 22. It stayed offline until I restarted it after giving it a role.
 
-### 6. Who is allowed to talk to AWS? (IAM)
-AWS trusts nobody without an identity.
-- ⭐ IAM **user** = for a person, stored key (`~/.aws`). IAM **role** = for a machine/service, no stored key, AWS gives temporary keys.
-- 3 identities:
-  - my Mac → user `terraform` ✅
-  - server → role with SSM permission ✅
-  - GitHub → role via OIDC (next)
-- Server role = 3 pieces: **role** (who: EC2) + **policy attachment** (what: SSM) + **instance profile** (attach to server).
-- Adding the role = `1 changed` in place → same server, same IP.
-- Agent started before the role → still offline → `snap restart amazon-ssm-agent` → check: `aws ssm describe-instance-information` → `Online` ✅.
+**5. Permissions (IAM)** 🪪
+AWS trusts nobody without an identity — not even programs on my own server. A **user** has a stored key (for people), a **role** gets temporary keys (for machines). My Mac = user `terraform`, the server = a role allowed to use SSM, GitHub = user `status-page-github`.
 
-### 7. OIDC: GitHub logs into AWS without a password
-⭐ GitHub shows AWS a signed ID ("I am repo MehdiAzizian/status-page") → AWS gives a **1-hour key**. No AWS keys stored in GitHub. Like "Login with Google".
+**6. OIDC was blocked** ⛔
+OIDC = GitHub logs into AWS with a signed ID instead of a key, like "Login with Google". An organization rule (**SCP**) above my account blocked it — even admin can't override that. Plan B: a key in **GitHub Secrets** that can do only one thing on one server (least privilege). It never appeared on my screen.
 
-### ⭐ The whole flow in one line
-push → test → build → image to GHCR → GitHub logs in (OIDC) → SSM → agent on server → `docker compose pull && up`
+**7. Deploy** 🚀
+`compose.yaml` now names the GHCR image with `${TAG}`. After a green build, GitHub tells SSM: `git pull` → download the new image → restart the app. I gave the permission first (`apply`), then pushed. Proof: `docker ps` on the server shows the same commit ID as the GitHub run; db and caddy weren't touched.
+
+**8. Rollback** ⏪
+A **Run workflow** button: paste an old full commit ID, and the old image comes back in ~30 seconds. Same as deploy, without `git pull`.
+
+**My mistakes:** `ci.ylm` typo · 2 spaces instead of 4 in `compose.yaml` · `outputs.tf` still pointing to a deleted role (edit not saved) · ran Ansible from `infra/`.
+
+### ⭐ The whole flow
+**push → test → build → GHCR → GitHub logs into AWS → SSM → server pulls image → app updated**
+**Broken? → Rollback button → old tag → fixed**
+
+### 🎤 Say it in an interview
+> "On every push, GitHub Actions tests the code, builds a Docker image tagged with the commit SHA and pushes it to GHCR. Then it deploys through AWS SSM, so no SSH port is open. Rollback is one click: redeploy the previous tag."
+
+> "I planned OIDC, but an organization SCP blocked it, so I used a least-privilege key in GitHub Secrets. In a company I'd ask the platform team to allow OIDC."
+
+📎 Exact commands and names: [NOTES-details.md](NOTES-details.md)
