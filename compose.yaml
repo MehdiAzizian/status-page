@@ -13,8 +13,8 @@ services:
     restart: unless-stopped
 
   app:
-  image: ghcr.io/mehdiazizian/status-page:${TAG:-latest}  
-  build: .
+    image: ghcr.io/mehdiazizian/status-page:${TAG:-latest}  
+    build: .
     environment:
       DATABASE_URL: postgres://postgres:secret@db:5432/postgres
     ports:
