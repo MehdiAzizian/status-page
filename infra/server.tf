@@ -19,5 +19,6 @@ resource "aws_instance" "web" {
   vpc_security_group_ids = [aws_security_group.web.id]
   key_name               = aws_key_pair.me.key_name
   tags                   = { Name = "status-page" }
+  iam_instance_profile = aws_iam_instance_profile.web.name
 }
 

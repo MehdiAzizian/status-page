@@ -5,6 +5,18 @@ The important points only. ⭐ = asked in interviews.
 
 ---
 
+## 0. The story so far (Phase 0)
+
+1. **The app**: small Go web server (port 8081) + PostgreSQL. Shows if Website / Login / API work.
+2. **Config**: DB address comes from env vars (`DATABASE_URL`), not code → same code everywhere.
+3. **Tests**: `go test` checks `validStatus` → later CI runs it on every push.
+4. **Docker**: Dockerfile → image (27 MB) → container. Runs the same on Mac and AWS.
+5. **Compose**: one file starts app + db together. App finds DB at `db:5432`.
+6. **Volume**: DB data lives in `pgdata`, survives container delete.
+7. **Restart policy**: containers come back after reboot.
+
+⭐ **Flow in one line:** code → Dockerfile → image → Compose (app + db + volume) → `docker compose up -d`.
+
 ## 1. The project
 
 - **Status page** = page showing if a company's services work (Website ✅ API ⚠️ Payments ❌). E.g. githubstatus.com.
@@ -152,6 +164,19 @@ nano: `Ctrl+O` save · `Ctrl+X` exit · `Ctrl+W` search
 ---
 
 # Phase 1: AWS + Terraform
+
+## The story (Phase 1)
+
+1. **Account + safety**: new AWS account, MFA, budget alert, IAM user `terraform` (not root).
+2. **Zombie lesson**: a stopped server's disk kept billing me → always terminate + check volumes.
+3. **Terraform**: infra as code → `init` · `plan` · `apply` · `destroy`. State = its memory.
+4. **Network**: VPC → public subnet → Internet Gateway → route table. Like my home network.
+5. **Firewall**: security group → 22 only from my IP, 80/443 for everyone.
+6. **Server**: EC2 (Ubuntu ARM) + my SSH key → I log in with `ssh -i`.
+7. **Destroy + apply**: everything rebuilt from code, new IP each time.
+8. **Clean code + remote state**: split `.tf` files, state in S3 (versioning + locking).
+
+⭐ **Flow in one line:** `terraform apply` → VPC + subnet + IGW + SG + EC2 → `ssh` in → `terraform destroy` at night.
 
 ## 12. AWS account & safety
 
@@ -341,57 +366,137 @@ nano: `Ctrl+O` save · `Ctrl+X` exit · `Ctrl+W` search
 
 ---
 
-# Phase 2: Ansible
+# Phase 2: Ansible — the story
 
-## 20. What Ansible is
-
-- ⭐ **Terraform creates** servers/networks. **Ansible configures** what's inside servers (users, packages, Docker, app).
+### 1. The goal
+Terraform gave me an empty Ubuntu server. Now I must fill it (Docker, app, security) — without typing commands by hand.
+- ⭐ **Terraform creates** servers/networks. **Ansible configures** what's inside (users, packages, Docker, app).
 - Why not SSH + type commands? Not repeatable, easy to forget, every server ends up different.
-- **Inventory** = list of servers (IPs, groups like `[web]`).
-- **Module** = one built-in action: `apt` install packages · `user` create user · `copy` copy file.
-- **Task** = one use of a module. **Playbook** = YAML file, list of tasks, run in order.
-- ⭐ **Agentless**: nothing installed on the server. Ansible connects over **SSH** and runs the tasks.
-- ⭐ **Idempotent**: run twice → 2nd run changes nothing (checks first). A bash script would redo it.
-- `ansible web -m ping` = check SSH + Python work. **Not** network ping.
-- `ansible.cfg`: `inventory = inventory.ini` · `StrictHostKeyChecking=accept-new` = accept new server, warn if it changes.
-- Before SSH/Ansible: `curl -4 ifconfig.me` → IP changed? update `terraform.tfvars` → apply.
-- ⭐ Auto IP: `data "http" "my_ip" { url = "https://checkip.amazonaws.com" }` → `["${chomp(data.http.my_ip.response_body)}/32"]`. No more manual IP.
-- `chomp()` = remove trailing newline · `"${x}/32"` = put a value inside text · new provider → `terraform init -upgrade`.
-- `..` = parent folder · `&&` = run next only if previous succeeded · `mkdir` = make folder.
-- Repo layout: app (root) · `infra/` Terraform creates server · `ansible/` Ansible configures it.
+- Repo layout: app (root) · `infra/` Terraform creates the server · `ansible/` Ansible configures it.
 - ⭐ GitHub = **code** · S3 = **state** (list of created resources) · AWS = **real resources**.
-- Inventory line = my ssh command in a file: `IP ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/status-page`.
-  Private key stays on my Mac; Ansible runs on my Mac and uses it like `ssh -i`.
-- ⭐ How a task runs: SSH in → copy small Python program → run → delete → result back. Needs only SSH + Python on server.
-- Mistake: named the file `invertory.ini` → Ansible "Unable to parse inventory" / "Could not match host pattern: web". "Can't find X" → check the file name first.
-- `Operation timed out` on port 22 → wrong/old IP (server gone) or firewall. Compare inventory IP with `terraform output`.
+
+### 2. How Ansible works
+- **Inventory** = list of servers (IPs, groups like `[web]`).
+- **Module** = one ready-made action (a Python script): `apt` install · `user` users · `copy` files.
+- **Task** = one use of a module. **Playbook** = YAML file, list of tasks, run in order.
+- ⭐ **Agentless**: nothing installed on the server. Ansible connects over **SSH**.
+- ⭐ How a task runs: SSH in → copy small Python script → run → delete → result back. Needs only SSH + Python on the server. (That's why `history` on the server is empty.)
+- ⭐ **Idempotent**: run twice → 2nd run changes nothing (checks first). A bash script would redo it.
+- Linux command (`sudo`, `ls`, `apt`) = program on the server. Ansible module = script inside Ansible on my Mac. `sudo` has no module → `become: true`.
+- ⭐ Don't memorize modules. Google "ansible <thing> module" → **Examples** at the bottom of the docs page. Know the CONCEPT.
+
+### 3. First contact
+- Inventory line = my ssh command in a file: `IP ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/status-page`. Private key stays on my Mac; Ansible uses it like `ssh -i`.
+- `ansible.cfg`: `inventory = inventory.ini` · `StrictHostKeyChecking=accept-new` = accept new server, warn if it changes.
 - ⭐ Ansible reads `ansible.cfg` from the **current folder** → always run it from `ansible/`.
-- ⭐ Terraform knows the IP → Terraform writes `inventory.ini` (`local_file`). Manual copy = goes stale after every new server.
-- `local_file` = file on my **Mac**, not on AWS. Needs `terraform init -upgrade` (new provider `hashicorp/local`).
-- `ping` → `SUCCESS` + `pong` = SSH works + Python found on server. Ansible itself is NOT installed there (agentless).
-- Generated files (inventory.ini) → `.gitignore`.
-- ⭐ Timeout but server running → my Mac's IP changed (new Wi-Fi). SG allows SSH only from old IP → `terraform apply` re-reads IP.
-- Playbook = YAML list of tasks. `hosts` = which group, `become: true` = sudo, `tasks` = jobs. Run: `ansible-playbook playbook.yml`.
-- `Gathering Facts` = Ansible reads server info first (OS, IP...). Always `ok`.
-- RECAP: `ok` = already right, `changed` = Ansible did something, `unreachable` = SSH failed.
-- `apt update_cache` always says `changed` → add `cache_valid_time: 3600` (skip if updated < 1h ago).
-- `apt` module: `name:` list of packages + `state: present` = install if missing. 1st run `changed`, 2nd `ok`.
+- `ansible web -m ping` = check SSH + Python. **Not** network ping. `SUCCESS` + `pong` = works.
+- `ansible web -a "cmd"` = run one command on all servers (`-b` = with sudo). Always says `CHANGED` (can't check state). `rc=0` = success.
+- `..` = parent folder · `&&` = run next only if previous succeeded · `mkdir -p a/b` = make folders.
+- Mistake: named the file `invertory.ini` → "Unable to parse inventory" / "Could not match host pattern: web". "Can't find X" → check the file name first.
+
+### 4. The IP problem (twice!)
+**a) Server IP changes** → new server after destroy/apply = new IP → inventory stale → timeout.
+- ⭐ Terraform knows the IP → Terraform writes `inventory.ini` (`local_file`). Manual copy = goes stale.
+- `local_file` = file on my **Mac**, not on AWS. New provider `hashicorp/local` → `terraform init -upgrade`.
+- Generated files (inventory.ini) → `.gitignore`. In `.gitignore` a trailing `/` = folder only.
+
+**b) My Mac IP changes** (new Wi-Fi) → SG allows SSH only from the old IP → timeout, but server is running.
+- ⭐ Auto IP: `data "http" "my_ip" { url = "https://checkip.amazonaws.com" }` → `["${chomp(data.http.my_ip.response_body)}/32"]`.
+- `chomp()` = remove trailing newline · `"${x}/32"` = put a value inside text.
+- Fix = `terraform apply` → changes only the SG rule. Server + app keep running. No Ansible rerun.
+- `Operation timed out` on 22 → old IP in inventory, or my IP changed. Compare with `terraform output` / `curl -4 ifconfig.me`.
+- Real fix later: **SSM** (no port 22 at all).
+
+### 5. First playbook
+- ⭐ YAML = only 3 rules: `key: value` (pair) · `- item` (list) · indent 2 spaces (inside). Space after `:`, no tabs.
+- Playbook: `hosts` = which group · `become: true` = sudo · `tasks` = jobs. Run: `ansible-playbook playbook.yml`.
+- Task shape: `- name:` + module + module's arguments (indented inside).
+- `Gathering Facts` = Ansible reads server info first (OS, IP…). Always `ok`.
+- RECAP: `ok` = already right · `changed` = Ansible did something · `unreachable` = SSH failed.
+- `apt update_cache` always says `changed` → `cache_valid_time: 3600` (skip if updated < 1h ago).
+- Mistake: `paybook.yml` typo → `mv`.
+
+### 6. Install Docker
+- `apt` module: `name:` list of packages (`docker.io`, `docker-compose-v2`) + `state: present` = install if missing. 1st run `changed`, 2nd `ok`.
+- `apt` because the server is Ubuntu (like `brew` on Mac). Red Hat/Amazon Linux → `dnf`. Generic → `package`.
 - ⭐ Use real modules, not `shell:` → modules check state first (idempotent), `shell` always says `changed`.
-- YAML: 2 spaces per level, `- ` = list item, space after `:`.
-- ⭐ YAML = only 3 rules: `key: value` (pair), `- item` (list), indent 2 spaces (inside). Ansible task = list item with `name` + module + module's arguments.
-- `docker` group = users in it can run `docker` without `sudo`. Module `user`, `append: true` keeps old groups.
-- ⭐ Don't memorize modules. Google "ansible <thing> module" → copy example from docs. Know the CONCEPT.
-- ⭐ IP = which machine. Port = which program on that machine (22 SSH, 80 HTTP, 443 HTTPS, 8081 my app, 5432 Postgres).
-- My Mac IP changed → `terraform apply` changes only the SG rule. Server + app keep running. No Ansible rerun needed.
-- Deploy = Ansible: `git` clone from GitHub → `docker_compose_v2` up. Same files as Mac, nothing rewritten.
+- `docker` group = its users run `docker` without `sudo`. Module `user`, `append: true` keeps old groups.
+
+### 7. Deploy the app
+- Same files as on my Mac — nothing rewritten. Code is on GitHub (public) → server clones it.
+- ⭐ Deploy = Ansible: `git` clone from GitHub → `community.docker.docker_compose_v2` up (idempotent `compose up -d`).
+- `community.docker.` = module from an extra collection (comes with brew's ansible).
 - `buildx isn't installed` warning → harmless, Compose uses old builder. Fix: apt package `docker-buildx`.
-- ⭐ Reverse proxy (Caddy) = single public entry on 80/443 → forwards to app:8081. App + DB stay hidden. Later does HTTPS.
-- Caddy = one more service in `compose.yaml` → starts with `compose up`, no manual `docker run`.
-- `localhost` = the machine I run the command on (server via SSH/Ansible, Mac in my browser).
-- Update app on server = `git push` → `ansible-playbook` (git pulls new commit, compose recreates).
-- ⭐ Reboot survives because: systemd starts Docker at boot → Docker restarts containers with `restart: unless-stopped`.
-- Check reboot happened: `uptime` (`up 1 min`).
-- ⭐ SSH hardening = `PasswordAuthentication no` + `PermitRootLogin no` → only my key works, nobody can guess passwords.
-- ⭐ 2 firewalls: AWS SG (outside server) + `ufw` (inside server) = defense in depth. One mistake ≠ open server.
+- `docker ps` PORTS: `0.0.0.0:8081->8081` = published · `5432/tcp` without `->` = DB not published, only reachable inside the Docker network ⭐.
+- `localhost` = the machine I run the command on (server via SSH/Ansible, my Mac in my browser).
+- ⭐ IP = which machine. Port = which program on it (22 SSH · 80 HTTP · 443 HTTPS · 8081 my app · 5432 Postgres).
+- Update app = `git push` → `ansible-playbook` (git pulls new commit, compose recreates). Phase 3 automates this.
+
+### 8. Open it to the internet: Caddy
+SG allows only 22/80/443, app listens on 8081 → put a proxy on 80.
+- ⭐ **Reverse proxy** = single public entry on 80/443 → forwards to `app:8081`. App + DB stay hidden. Does HTTPS later. Routes many apps on one port.
+- `Caddyfile`: `:80 { reverse_proxy app:8081 }`. Caddy = one more service in `compose.yaml` → starts with `compose up`.
+- Why Caddy: 3 lines of config + free automatic HTTPS. Alternatives: Nginx (most common), Traefik, AWS ALB.
+- Opening 80 to everyone = normal for a website. Only Caddy listens there.
+- Mistake: `Cadyfile` typo → caught before push.
+
+### 9. Survive a reboot
+- ⭐ Chain: server boots → systemd starts Docker → Docker restarts containers (`restart: unless-stopped`).
+- Test: `ansible web -b -a "reboot"` → `uptime` shows `up 1 min` → site still works.
+
+### 10. Lock it down
+- ⭐ SSH hardening = `PasswordAuthentication no` + `PermitRootLogin no` → only my key works, nothing to guess.
+- ⭐ 2 firewalls: AWS SG (outside) + `ufw` (inside the server) = **defense in depth**. One mistake ≠ open server.
+- ufw: allow 22 **before** enabling, or I lock myself out.
 - Handler = runs only if a task with `notify` changed (restart ssh only when config changed).
 - `loop` + `{{ item }}` = same task for each value.
+
+### ⭐ The whole flow in one line
+Terraform creates server + writes inventory → Ansible: Docker → clone repo → compose up (app + db + Caddy) → harden SSH + ufw → site live on :80, survives reboot.
+
+# Phase 3: CI/CD — the story
+
+### 1. The goal
+Before: I deployed by hand → `git push`, then `ansible-playbook`, and the server built the image itself.
+Now: I only `git push`. Everything else happens alone.
+- ⭐ **CI** = every push → code is **tested + built** automatically.
+- ⭐ **CD** = if CI is green → code is **deployed** automatically.
+
+### 2. CI: GitHub tests my code
+On every push, GitHub lends me a fresh Ubuntu machine and runs `.github/workflows/ci.yml`.
+- `on` = when · `jobs` = what · `runs-on` = which machine · `uses` = ready-made step (like an Ansible module) · `run` = my own shell command.
+- 🟡 running → 🟢 passed / 🔴 failed. Broken code stops **before** the server.
+- Alternatives: GitLab CI (common in Italy), Jenkins.
+
+### 3. CI: GitHub builds the image
+If tests pass (`needs: test`), GitHub builds the Docker image and pushes it to **GHCR** (GitHub's image storage, like Docker Hub).
+- ⭐ Build **once**, test it, deploy the **same** image. Server stops building.
+- Tag = commit ID (SHA) → ⭐ **rollback = run the old tag**.
+
+### 4. CD problem: how does GitHub say "deploy NOW"?
+GitHub's IPs change every run → I can't allow them on port 22 (that = open to the whole world ❌).
+- ⭐ Firewall blocks traffic coming **IN**. Traffic going **OUT** is allowed.
+- Server downloading from GHCR = OUT → already works. Only the "NOW" message is the problem.
+
+### 5. The answer: SSM
+⭐ **SSM** (AWS Systems Manager) = AWS runs commands on my server. No SSH, no port 22.
+- **SSM agent** = small program already on the server. It keeps asking AWS (OUT) "any command for me?" → runs it.
+- GitHub leaves the order at AWS → agent picks it up → server pulls image from GHCR → restarts.
+- Bonus: fixes my own changing-IP problem too.
+
+### 6. Who is allowed to talk to AWS? (IAM)
+AWS trusts nobody without an identity.
+- ⭐ IAM **user** = for a person, stored key (`~/.aws`). IAM **role** = for a machine/service, no stored key, AWS gives temporary keys.
+- 3 identities:
+  - my Mac → user `terraform` ✅
+  - server → role with SSM permission ✅
+  - GitHub → role via OIDC (next)
+- Server role = 3 pieces: **role** (who: EC2) + **policy attachment** (what: SSM) + **instance profile** (attach to server).
+- Adding the role = `1 changed` in place → same server, same IP.
+- Agent started before the role → still offline → `snap restart amazon-ssm-agent` → check: `aws ssm describe-instance-information` → `Online` ✅.
+
+### 7. OIDC: GitHub logs into AWS without a password
+⭐ GitHub shows AWS a signed ID ("I am repo MehdiAzizian/status-page") → AWS gives a **1-hour key**. No AWS keys stored in GitHub. Like "Login with Google".
+
+### ⭐ The whole flow in one line
+push → test → build → image to GHCR → GitHub logs in (OIDC) → SSM → agent on server → `docker compose pull && up`
