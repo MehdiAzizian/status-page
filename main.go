@@ -10,6 +10,9 @@ import (
 	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type Component struct {
@@ -25,6 +28,17 @@ func validStatus(s string) bool {
 	}
 	return false
 }
+
+
+var requests = promauto.NewCounterVec(prometheus.CounterOpts{
+	Name: "http_requests_total",
+	Help: "HTTP requests by status code and method.",
+}, []string{"code", "method"})
+
+var duration = promauto.NewHistogramVec(prometheus.HistogramOpts{
+	Name: "http_request_duration_seconds",
+	Help: "How long HTTP requests take.",
+}, []string{"code", "method"})
 
 func main() {
 	dbURL := os.Getenv("DATABASE_URL")
@@ -120,6 +134,12 @@ mux.HandleFunc("POST /components/{id}/status", func(w http.ResponseWriter, r *ht
 	w.WriteHeader(http.StatusNoContent)
 })
 
+	mux.Handle("GET /metrics", promhttp.Handler())
+
+	handler := promhttp.InstrumentHandlerDuration(duration,
+		promhttp.InstrumentHandlerCounter(requests, mux))
+
 	log.Println("listening on :" + port)
-	log.Fatal(http.ListenAndServe(":"+port, mux))
+	log.Fatal(http.ListenAndServe(":"+port, handler))
+
 }
