@@ -54,7 +54,7 @@ services:
   grafana:
     image: grafana/grafana:11.3.0
     ports:
-      - "127.0.0.1:3000:300"
+      - "127.0.0.1:3000:3000"
     volumes:
       - grafana-data:/var/lib/grafana
     depends_on:
