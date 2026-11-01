@@ -93,3 +93,4 @@ AWS services (SSM, S3, IAM… at `*.amazonaws.com`) trust nobody without an iden
 - **SSH through SSM:** `~/.ssh/config` has `ProxyCommand aws ssm start-session ... AWS-StartSSHSession` and `IdentityFile`. ssh and Ansible both use it. A rebuilt server has a new instance ID, so update the rule.
 - **`~/.ssh/config` belonged to root** → `sudo chown meti ~/.ssh/config`.
 - **`free -h`:** read `available`, not `free`. `buff/cache` is given back when needed.
+- **Provisioning:** Grafana reads `/etc/grafana/provisioning/` at start. Clicks live only in the `grafana-data` volume; files live in git. YAML = settings I write. JSON = dashboards Grafana generates.
