@@ -71,6 +71,26 @@ services:
       - /:/host:ro
     restart: unless-stopped
 
+  vmalert:
+    image: victoriametrics/vmalert:v1.106.0
+    command:
+      - -datasource.url=http://victoriametrics:8428
+      - -notifier.url=http://alertmanager:9093
+      - -rule=/etc/vmalert/rules.yaml
+    volumes:
+      - ./vmalert-rules.yaml:/etc/vmalert/rules.yaml
+    depends_on:
+      - victoriametrics
+      - alertmanager
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    volumes:
+      - ./alertmanager.yaml:/etc/alertmanager/alertmanager.yml
+    restart: unless-stopped
+
+
 volumes:
   pgdata:
   vmdata:

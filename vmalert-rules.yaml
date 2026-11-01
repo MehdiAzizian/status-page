@@ -1,0 +1,10 @@
+groups:
+  - name: status-page
+    rules:
+      - alert: AppDown
+        expr: up{job="status-page"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Status page app is down"

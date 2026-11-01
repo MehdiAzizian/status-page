@@ -99,3 +99,7 @@ AWS services (SSM, S3, IAM… at `*.amazonaws.com`) trust nobody without an iden
 - **Dashboard JSON:** Settings → JSON Model → copy → `pbpaste > grafana/provisioning/dashboards/status-page.json`.
 - **Tunnel, not VPN:** one port, not the whole network. Why not open 3000: my IP changes, and Grafana is plain HTTP.
 - **Port 22 closed:** removed the SSH `ingress` and `data "http" "my_ip"` from `infra/security.tf`. SSM goes out to AWS, so the Security Group never sees it.
+- **node_exporter:** port 9100. `/:/host:ro` shows it the server's disk read-only. `pid: host` shows it the server's processes.
+- **`up`:** 1 = the scrape worked, 0 = target down.
+- **"No data" right after a restart:** wait one scrape, then refresh.
+- **OTel reads its config only at start**, like Caddy → `docker restart status-page-otel-1`.
