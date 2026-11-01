@@ -6,6 +6,11 @@ receivers:
           scrape_interval: 15s
           static_configs:
             - targets: ["app:8081"]
+        - job_name: node
+          scrape_interval: 15s
+          static_configs:
+            - targets: ["node-exporter:9100"]
+
 
 exporters:
   prometheusremotewrite:

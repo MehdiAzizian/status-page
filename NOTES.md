@@ -510,6 +510,10 @@ A **Run workflow** button: paste an old full commit ID, and the old image comes 
 
 **🔌 Private access.** On the server, Grafana listens only on `127.0.0.1:3000`. An SSH tunnel carries my browser to it. My IP kept changing, so now all SSH goes through SSM. No more `terraform apply` just to log in.
 
+**📦 Dashboards as code.** Clicks live only in the `grafana-data` volume. So I exported the dashboard as JSON into git, with the data source as YAML, and Grafana loads them at start (provisioning). Proof: I deleted the volume on purpose. Only the password was lost; the dashboard came back from git.
+
+**🚪 Port 22 closed.** All SSH goes through SSM now, so the rule was useless and only added risk. I removed it with Terraform. `ansible web -m ping` still answers `pong`, with no open SSH port.
+
 **Mistakes:** counters not saved in main.go, Go version mismatch (1.25 vs 1.26), 1.62 GB build context (fixed with `.dockerignore`), forgot Caddy restart (it reads the Caddyfile only at start), typo `3000:300` in compose (blank page, but the container looked fine).
 
 ### ⭐ The whole flow

@@ -62,6 +62,14 @@ services:
       - victoriametrics
     restart: unless-stopped
 
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    pid: host
+    command:
+      - --path.rootfs=/host
+    volumes:
+      - /:/host:ro
+    restart: unless-stopped
 
 volumes:
   pgdata:

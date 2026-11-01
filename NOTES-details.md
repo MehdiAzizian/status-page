@@ -94,3 +94,8 @@ AWS services (SSM, S3, IAM… at `*.amazonaws.com`) trust nobody without an iden
 - **`~/.ssh/config` belonged to root** → `sudo chown meti ~/.ssh/config`.
 - **`free -h`:** read `available`, not `free`. `buff/cache` is given back when needed.
 - **Provisioning:** Grafana reads `/etc/grafana/provisioning/` at start. Clicks live only in the `grafana-data` volume; files live in git. YAML = settings I write. JSON = dashboards Grafana generates.
+- **Dashboard** = the page. **Panel** = one graph. My panels: requests per second, requests by code, p95 latency.
+- **p95** = 95% of requests are faster than this. Mine: under 5 ms.
+- **Dashboard JSON:** Settings → JSON Model → copy → `pbpaste > grafana/provisioning/dashboards/status-page.json`.
+- **Tunnel, not VPN:** one port, not the whole network. Why not open 3000: my IP changes, and Grafana is plain HTTP.
+- **Port 22 closed:** removed the SSH `ingress` and `data "http" "my_ip"` from `infra/security.tf`. SSM goes out to AWS, so the Security Group never sees it.
