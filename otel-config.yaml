@@ -1,0 +1,18 @@
+receivers:
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: status-page
+          scrape_interval: 15s
+          static_configs:
+            - targets: ["app:8081"]
+
+exporters:
+  prometheusremotewrite:
+    endpoint: http://victoriametrics:8428/api/v1/write
+
+service:
+  pipelines:
+    metrics:
+      receivers: [prometheus]
+      exporters: [prometheusremotewrite]

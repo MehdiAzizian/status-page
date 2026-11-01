@@ -71,3 +71,20 @@ AWS services (SSM, S3, IAM… at `*.amazonaws.com`) trust nobody without an iden
 - Ran ansible from `infra/` → "No inventory was parsed".
 
 
+
+## Phase 4: Monitoring
+
+- **Metric line:** name + labels + number: `http_requests_total{code="200",method="get"} 6`.
+- **Counter** only goes up. **Histogram** stores durations.
+- **OTel config has 3 parts:** `receivers` = where data comes from. `exporters` = where it goes. `service.pipelines` = connects them; without it nothing runs.
+- **Scrape** = OTel pulls (GET). **Remote write** = OTel pushes (POST) to `/api/v1/write`.
+- **Ports:** app 8081, Victoria 8428, Grafana 3000. No `ports:` line = private to the Docker network.
+- **`vmdata`:** a volume I declare in compose. Docker creates it as `status-page_vmdata`.
+- **Bind mount** `./otel-config.yaml:/etc/otelcol-contrib/config.yaml` puts my file where OTel looks.
+- **Query test:** `docker compose exec victoriametrics wget -qO- "http://127.0.0.1:8428/api/v1/query?query=http_requests_total"`
+- **Caddy:** `respond /metrics 403`. Restart needed after a Caddyfile change.
+- **Series** = name + one set of labels. **Sample** = one timestamp + value.
+- **Instant query** = latest sample. **Range query** = many samples, which become a graph.
+- **`rate(http_requests_total[1m])`** = requests per second. It handles counter resets after a restart.
+- **Grafana data source:** Prometheus type, URL `http://victoriametrics:8428`.
+- **Graph tip:** check the axis. Mine looked wild but only moved between 0.06665 and 0.06669.

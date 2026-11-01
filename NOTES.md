@@ -495,3 +495,25 @@ A **Run workflow** button: paste an old full commit ID, and the old image comes 
 > "I planned OIDC, but an organization SCP blocked it, so I used a least-privilege key in GitHub Secrets. In a company I'd ask the platform team to allow OIDC."
 
 📎 Exact commands and names: [NOTES-details.md](NOTES-details.md)
+
+# Phase 4: Monitoring — in one page
+
+**📟 The app counts.** I added the Prometheus Go library. Now every request passes a wrapper (`handler`) that does +1 on a counter and measures time. The `/metrics` page prints those numbers as text.
+
+**🧠 The problem: RAM.** The numbers live in the app's memory. Restart means 0, and there is no history, only the number right now.
+
+**🔒 Keep it private.** `/metrics` must not be public, so Caddy answers 403. OTel doesn't pass through Caddy: it uses the Docker network directly, so it can still read it.
+
+**🚚 OTel reads, Victoria saves.** Every 15s OTel Collector scrapes `app:8081/metrics` (GET) and sends the numbers to VictoriaMetrics (POST). Victoria writes each number with a timestamp to a Docker volume. Now history survives restarts.
+
+**📈 Grafana draws.** Grafana stores no metrics. It sends a query to Victoria and draws the answer. I connected it as a Prometheus data source, because Victoria speaks the Prometheus API. My first graph showed 0.0667 requests per second: one OTel scrape every 15 seconds.
+
+**Mistakes:** counters not saved in main.go, Go version mismatch (1.25 vs 1.26), 1.62 GB build context (fixed with `.dockerignore`), forgot Caddy restart (it reads the Caddyfile only at start).
+
+### ⭐ The whole flow
+app `/metrics` ← GET every 15s ← OTel Collector → POST → VictoriaMetrics (disk) ← query ← Grafana
+
+### 🎤 Say it in an interview
+"My app exposes Prometheus metrics. An OpenTelemetry Collector scrapes them every 15 seconds and writes them to VictoriaMetrics with remote write, so history is on disk. Caddy blocks `/metrics` publicly; the collector reaches the app over the private Docker network."
+
+Details: [NOTES-details.md](NOTES-details.md)

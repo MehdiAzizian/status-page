@@ -35,5 +35,34 @@ services:
     restart: unless-stopped
 
 
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:v1.106.0
+    volumes:
+      - vmdata:/victoria-metrics-data
+    restart: unless-stopped
+
+  otel:
+    image: otel/opentelemetry-collector-contrib:0.130.0
+    volumes:
+      - ./otel-config.yaml:/etc/otelcol-contrib/config.yaml
+    depends_on:
+      - app
+      - victoriametrics
+    restart: unless-stopped
+
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    ports:
+      - "127.0.0.1:3000:300"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - victoriametrics
+    restart: unless-stopped
+
+
 volumes:
   pgdata:
+  vmdata:
+  grafana-data:
