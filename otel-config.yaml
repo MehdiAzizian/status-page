@@ -10,14 +10,27 @@ receivers:
           scrape_interval: 15s
           static_configs:
             - targets: ["node-exporter:9100"]
-
+  filelog:
+    include: [/var/lib/docker/containers/*/*-json.log]
+    resource:
+      service.name: docker
+    operators:
+      - type: json_parser
+      - type: move
+        from: attributes.log
+        to: body
 
 exporters:
   prometheusremotewrite:
     endpoint: http://victoriametrics:8428/api/v1/write
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
 
 service:
   pipelines:
     metrics:
       receivers: [prometheus]
       exporters: [prometheusremotewrite]
+    logs:
+      receivers: [filelog]
+      exporters: [otlphttp/loki]

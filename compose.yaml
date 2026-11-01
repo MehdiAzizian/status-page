@@ -43,13 +43,15 @@ services:
 
   otel:
     image: otel/opentelemetry-collector-contrib:0.130.0
+    user: "0"
     volumes:
       - ./otel-config.yaml:/etc/otelcol-contrib/config.yaml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
     depends_on:
       - app
       - victoriametrics
+      - loki
     restart: unless-stopped
-
 
   grafana:
     image: grafana/grafana:11.3.0
@@ -90,6 +92,10 @@ services:
       - ./alertmanager.yaml:/etc/alertmanager/alertmanager.yml
     restart: unless-stopped
 
+
+  loki:
+    image: grafana/loki:3.3.2
+    restart: unless-stopped
 
 volumes:
   pgdata:

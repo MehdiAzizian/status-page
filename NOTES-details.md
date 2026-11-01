@@ -103,3 +103,6 @@ AWS services (SSM, S3, IAM… at `*.amazonaws.com`) trust nobody without an iden
 - **`up`:** 1 = the scrape worked, 0 = target down.
 - **"No data" right after a restart:** wait one scrape, then refresh.
 - **OTel reads its config only at start**, like Caddy → `docker restart status-page-otel-1`.
+- **Alert files:** `vmalert-rules.yaml` = when to fire. `alertmanager.yaml` = who gets told.
+- **`for: 1m`:** the condition must stay true for 1 minute, so small blips don't alert.
+- **Check alerts:** `docker exec status-page-alertmanager-1 amtool alert query --alertmanager.url=http://localhost:9093`

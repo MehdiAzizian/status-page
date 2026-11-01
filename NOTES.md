@@ -516,6 +516,8 @@ A **Run workflow** button: paste an old full commit ID, and the old image comes 
 
 **🖥️ Server metrics.** I only watched the app, so a full disk would give no warning. node_exporter reads CPU, RAM and disk from Linux and shows them on `/metrics` at port 9100. OTel scrapes it like the app.
 
+**🚨 Alerts.** A dashboard helps only if someone looks at it. vmalert asks Victoria every minute: is `up` 0 for 1 minute? If yes, it tells Alertmanager, which decides who to notify. I stopped the app on purpose and `AppDown` fired.
+
 **Mistakes:** counters not saved in main.go, Go version mismatch (1.25 vs 1.26), 1.62 GB build context (fixed with `.dockerignore`), forgot Caddy restart (it reads the Caddyfile only at start), typo `3000:300` in compose (blank page, but the container looked fine).
 
 ### ⭐ The whole flow
