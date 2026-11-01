@@ -88,3 +88,8 @@ AWS services (SSM, S3, IAM… at `*.amazonaws.com`) trust nobody without an iden
 - **`rate(http_requests_total[1m])`** = requests per second. It handles counter resets after a restart.
 - **Grafana data source:** Prometheus type, URL `http://victoriametrics:8428`.
 - **Graph tip:** check the axis. Mine looked wild but only moved between 0.06665 and 0.06669.
+- **`127.0.0.1:3000:3000`** = same port, but only the server itself can connect.
+- **SSH tunnel:** `ssh -L 3001:localhost:3000 ubuntu@13.48.29.80`. Left = Mac port. Right = address seen from the server.
+- **SSH through SSM:** `~/.ssh/config` has `ProxyCommand aws ssm start-session ... AWS-StartSSHSession` and `IdentityFile`. ssh and Ansible both use it. A rebuilt server has a new instance ID, so update the rule.
+- **`~/.ssh/config` belonged to root** → `sudo chown meti ~/.ssh/config`.
+- **`free -h`:** read `available`, not `free`. `buff/cache` is given back when needed.
