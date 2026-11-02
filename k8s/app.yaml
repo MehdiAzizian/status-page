@@ -1,0 +1,26 @@
+apiVersion: apps/v1          # which API this kind of object belongs to
+kind: Deployment             # the object type
+metadata:
+  name: app                  # its name in k3s
+spec:
+  replicas: 1                # keep 1 Pod running
+  selector:
+    matchLabels:
+      app: status-page       # "my Pods are the ones with this label"
+  template:                  # the recipe for each Pod
+    metadata:
+      labels:
+        app: status-page     # the label put on each Pod (must match the selector above)
+    spec:
+      containers:
+        - name: app
+          image: ghcr.io/mehdiazizian/status-page:b1535170a6cb8455141de06bf03ad561e8de4674   # same image CD deploys
+          env:
+            - name: DATABASE_URL
+              value: postgres://postgres:secret@db:5432/postgres   # copied from compose.yaml
+          ports:
+            - containerPort: 8081
+          readinessProbe:    # the readiness check you learned
+            httpGet:
+              path: /healthz
+              port: 8081
