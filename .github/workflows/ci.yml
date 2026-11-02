@@ -45,6 +45,6 @@ jobs:
             --query 'Reservations[0].Instances[0].InstanceId' --output text)
           CMD=$(aws ssm send-command --instance-ids "$ID" \
             --document-name AWS-RunShellScript \
-            --parameters 'commands=["export HOME=/root TAG=${{ github.sha }}","cd /home/ubuntu/status-page","git pull","docker compose pull app","docker compose up -d --no-build"]' \
+            --parameters 'commands=["export HOME=/root TAG=${{ github.sha }}","cd /home/ubuntu/status-page","git pull","docker compose pull app","docker compose up -d --no-build","docker image prune -af"]' \
             --query Command.CommandId --output text)
           aws ssm wait command-executed --command-id "$CMD" --instance-id "$ID"

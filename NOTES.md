@@ -518,12 +518,32 @@ A **Run workflow** button: paste an old full commit ID, and the old image comes 
 
 **🚨 Alerts.** A dashboard helps only if someone looks at it. vmalert asks Victoria every minute: is `up` 0 for 1 minute? If yes, it tells Alertmanager, which decides who to notify. I stopped the app on purpose and `AppDown` fired.
 
+**📜 Logs with Loki.** Metrics say what happened, logs say why. Logs were trapped inside containers and lost on every deploy. Now OTel reads Docker's log files and sends them to Loki, and Grafana shows them. Same design as metrics.
+
 **Mistakes:** counters not saved in main.go, Go version mismatch (1.25 vs 1.26), 1.62 GB build context (fixed with `.dockerignore`), forgot Caddy restart (it reads the Caddyfile only at start), typo `3000:300` in compose (blank page, but the container looked fine).
 
 ### ⭐ The whole flow
 app `/metrics` ← GET every 15s ← OTel Collector → POST → VictoriaMetrics (disk) ← query ← Grafana
+container logs → OTel → Loki ← Grafana
+vmalert → asks Victoria → Alertmanager → (Telegram later)
 
 ### 🎤 Say it in an interview
 "My app exposes Prometheus metrics. An OpenTelemetry Collector scrapes them every 15 seconds and writes them to VictoriaMetrics with remote write, so history is on disk. Caddy blocks `/metrics` publicly; the collector reaches the app over the private Docker network."
 
+"Grafana dashboards are provisioned from git. I proved it by deleting the volume: the dashboard came back. vmalert checks the rules and sends to Alertmanager; I tested it by stopping the app. Logs go through OTel to Loki."
+
 Details: [NOTES-details.md](NOTES-details.md)
+
+# Phase 5: k3s — in one page
+
+**🤔 Why leave Compose?** Compose starts containers, then stops caring. A deploy replaces the app with no check, so a bad image means downtime until I press rollback. A hung app stays hung, because `restart: unless-stopped` only reacts when the process exits. Kubernetes keeps comparing what I declared with what really runs, and fixes the difference.
+
+⭐ k3s = real Kubernetes in one small binary. One node gives no HA: if the EC2 server dies, everything dies.
+
+**🧱 The pieces.** A node is a server, so my EC2 is a node. A node runs many Pods. A Pod usually holds one container. Pods are thrown away and replaced, never repaired, so a new Pod gets a new name and IP.
+
+**🔁 The loop.** Desired state is what I write in YAML. Actual state is what really runs. A controller is a program that compares them forever and fixes the difference, like a thermostat.
+
+**🩺 The checks.** Liveness asks "are you alive?". If it fails, the container restarts. Readiness asks "can you take traffic?". If it fails, the Pod gets no traffic but keeps running.
+
+**🚪 Caddy = reverse proxy.** Users only talk to Caddy on port 80. Caddy passes each request to the app on 8081, like a home router forwards traffic to my laptop. One public door: it can block paths (`/metrics`) and do HTTPS. In k3s, Traefik does this job.

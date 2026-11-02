@@ -106,3 +106,18 @@ AWS services (SSM, S3, IAM… at `*.amazonaws.com`) trust nobody without an iden
 - **Alert files:** `vmalert-rules.yaml` = when to fire. `alertmanager.yaml` = who gets told.
 - **`for: 1m`:** the condition must stay true for 1 minute, so small blips don't alert.
 - **Check alerts:** `docker exec status-page-alertmanager-1 amtool alert query --alertmanager.url=http://localhost:9093`
+- **Loki:** port 3100, stores logs. Query: `{service_name="docker"}`. Filter: add `|= "error"`.
+- **OTel logs:** `filelog` receiver reads `/var/lib/docker/containers/*/*-json.log`, `otlphttp/loki` exporter, second pipeline `logs`. `user: "0"` because the log files belong to root.
+- **To do later:** Telegram receiver in `alertmanager.yaml`, Loki volume and retention (now in the container only, lost if recreated), a disk-full alert.
+
+## Phase 5: k3s
+
+- **Node** = server. **Cluster** = group of nodes. **Pod** = smallest unit Kubernetes runs, usually 1 container, has its own IP.
+- **Deployment** = YAML: which image, how many Pods. **Controller** = program that compares desired and actual state, then fixes the difference.
+- **kubelet** = agent on each node. It runs the probes. Default liveness: every 10s, restart after 3 failures.
+- **Rolling update:** new Pod first, old Pod removed only after the new one is ready.
+- **SSH vs Ansible:** SSH to look or debug once. Ansible for changes, stored in git and repeatable.
+- **`df -h /`:** disk space. Check it before installing anything.
+- **Paths:** open a file with its full path, no `cd`: `nano ~/Desktop/P2/status-page/.github/workflows/ci.yml`. `~` = my home folder. Press Tab to complete names.
+- **`grep -n "word" file`:** shows the lines that contain the word. `-n` = with line numbers.
+- **`docker system df`:** what Docker uses. `docker image prune -a` = delete unused images. `docker builder prune` = delete build cache.
