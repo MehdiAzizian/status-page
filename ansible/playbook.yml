@@ -6,6 +6,25 @@
         update_cache: true
         cache_valid_time: 3600
 
+    - name: Create swap file
+      command: fallocate -l 2G /swapfile
+      args:
+        creates: /swapfile
+
+    - name: Swap file only for root
+      file:
+        path: /swapfile
+        mode: "0600"
+
+    - name: Turn swap on
+      shell: mkswap /swapfile && swapon /swapfile
+      when: ansible_swaptotal_mb == 0
+
+    - name: Swap on at boot
+      lineinfile:
+        path: /etc/fstab
+        line: "/swapfile none swap sw 0 0"
+
     - name: Install Docker
       apt:
         name:
@@ -24,10 +43,6 @@
       git:
         repo: https://github.com/MehdiAzizian/status-page.git
         dest: /home/ubuntu/status-page
-
-    - name: Start app with Compose
-      community.docker.docker_compose_v2:
-        project_src: /home/ubuntu/status-page
 
 
     - name: SSH - no passwords, no root login

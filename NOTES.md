@@ -547,3 +547,23 @@ Details: [NOTES-details.md](NOTES-details.md)
 **🩺 The checks.** Liveness asks "are you alive?". If it fails, the container restarts. Readiness asks "can you take traffic?". If it fails, the Pod gets no traffic but keeps running.
 
 **🚪 Caddy = reverse proxy.** Users only talk to Caddy on port 80. Caddy passes each request to the app on 8081, like a home router forwards traffic to my laptop. One public door: it can block paths (`/metrics`) and do HTTPS. In k3s, Traefik does this job.
+
+**🗺️ Who does what.** Terraform builds the AWS parts (server, disk, firewall); I run it by hand, rarely. Ansible sets up the inside of the server (swap, Docker, SSH); I run it by hand, rarely. `git push` only deploys the app: build image → GHCR → SSM → `compose up`. A push never runs Terraform or Ansible. ⭐ One owner per thing: when Ansible also started the app, it ran a `:latest` image built on the server instead of the tested one.
+
+# Linux — the important parts
+
+**📂 Paths.** An absolute path starts at `/` or `~` and works from anywhere. A relative path starts from the folder I am in. Tab completes names, so I never type a full path by hand.
+
+**🔍 Find things.** `grep -n "word" file` prints the lines that contain the word, with line numbers. I use it to check a file without opening it.
+
+**💽 Disk = 3 layers.** Disk (`nvme0n1`) → partition (`nvme0n1p1`) → filesystem (ext4). `lsblk` shows the disk and partitions, `df -h /` shows the filesystem. Growing a disk: Terraform grows the disk, `growpart` grows the partition, `resize2fs` grows the filesystem. Each layer has its own tool.
+
+**🧠 Memory.** `free -h`: read `available`, not `free`. Linux uses spare RAM as cache (`buff/cache`) and gives it back when an app needs it.
+
+**🔐 Permissions.** Every file has an owner. `sudo` runs one command as root. A private SSH key must be `600` (only me), or SSH refuses it. `chown` changes the owner. `chmod 600` sets the rights: 3 digits = owner, group, others; read = 4, write = 2, run = 1, add them up. 600 = owner reads + writes, nobody else.
+
+**🔧 `mk` = make.** `mkdir` makes a folder, `mkswap` makes swap, `mkfs` makes a filesystem. Linux names are short English words.
+
+**💤 Swap.** A file on disk used as extra RAM when RAM is full. Slow, but it stops Linux from killing a process (like Postgres) when memory runs out. `swapon` turns it on, `free -h` shows it.
+
+**⚙️ systemd.** It starts services at boot. Chain on my server: boot → systemd starts Docker → Docker restarts my containers.
