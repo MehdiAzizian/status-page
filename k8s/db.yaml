@@ -20,3 +20,14 @@ spec:
               value: secret
           ports:
             - containerPort: 5432
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db          # the DNS name the app uses
+spec:
+  selector:
+    app: db         # send traffic to Pods with this sticker
+  ports:
+    - port: 5432
