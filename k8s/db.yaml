@@ -20,14 +20,33 @@ spec:
               value: secret
           ports:
             - containerPort: 5432
-
+          volumeMounts:
+            - name: init
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: init
+          configMap:
+            name: db-init
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: db          # the DNS name the app uses
+  name: db
 spec:
   selector:
-    app: db         # send traffic to Pods with this sticker
+    app: db
   ports:
     - port: 5432
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-init
+data:
+  init.sql: |
+    CREATE TABLE components (
+      id     SERIAL PRIMARY KEY,
+      name   TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'operational'
+    );
+    INSERT INTO components (name) VALUES ('Website'), ('Login'), ('API');
