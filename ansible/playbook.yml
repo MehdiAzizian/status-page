@@ -25,6 +25,11 @@
         path: /etc/fstab
         line: "/swapfile none swap sw 0 0"
 
+    - name: Install k3s
+      shell: curl -sfL https://get.k3s.io | sh -
+      args:
+        creates: /usr/local/bin/k3s
+
     - name: Install Docker
       apt:
         name:
