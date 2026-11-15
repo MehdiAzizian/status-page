@@ -4,6 +4,8 @@ metadata:
   name: db
 spec:
   replicas: 1
+  strategy:
+    type: Recreate                     # NEW: stop old Pod first
   selector:
     matchLabels:
       app: db
@@ -23,10 +25,26 @@ spec:
           volumeMounts:
             - name: init
               mountPath: /docker-entrypoint-initdb.d
+            - name: data                         # NEW
+              mountPath: /var/lib/postgresql/data
       volumes:
         - name: init
           configMap:
             name: db-init
+        - name: data                             # NEW
+          persistentVolumeClaim:
+            claimName: db-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim                      # NEW: "I need 1 GB"
+metadata:
+  name: db-data
+spec:
+  accessModes:
+    - ReadWriteOnce                              # one node can write
+  resources:
+    requests:
+      storage: 1Gi
 ---
 apiVersion: v1
 kind: Service
