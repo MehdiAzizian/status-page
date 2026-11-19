@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: ghcr.io/mehdiazizian/status-page:b1535170a6cb8455141de06bf03ad561e8de4674   # same image CD deploys
+          image: ghcr.io/mehdiazizian/status-page:IMAGE_TAG
           env:
             - name: DATABASE_URL
               value: postgres://postgres:secret@db:5432/postgres   # copied from compose.yaml
