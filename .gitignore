@@ -18,3 +18,6 @@
 
 # ansible
 ansible/inventory.ini
+LOG.md
+NOTES.md
+NOTES-details.md
